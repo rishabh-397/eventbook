@@ -17,7 +17,10 @@ export default function SeatMapPage() {
     loadEvent();
 
     // Live updates: when others hold/book/release seats, refresh
-    const socket = io('http://localhost:4000');
+    const socketUrl = import.meta.env.VITE_API_URL
+  ? import.meta.env.VITE_API_URL.replace('/api', '')
+  : 'http://localhost:4000';
+const socket = io(socketUrl);
     socket.emit('join_event', id);
     socket.on('seats_held', loadEvent);
     socket.on('seats_booked', loadEvent);

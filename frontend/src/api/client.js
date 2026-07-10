@@ -1,13 +1,14 @@
 import axios from 'axios';
 
-   const api = axios.create({
-     baseURL: 'http://localhost:4000/api',
-   });
+// Uses VITE_API_URL if set (in production), falls back to localhost for local dev
+const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
 
-   api.interceptors.request.use((config) => {
-     const token = localStorage.getItem('token');
-     if (token) config.headers.Authorization = `Bearer ${token}`;
-     return config;
-   });
+const api = axios.create({ baseURL });
 
-   export default api;
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  return config;
+});
+
+export default api;

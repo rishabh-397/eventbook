@@ -10,10 +10,18 @@ const { startExpiredHoldsJob } = require('./jobs/releaseExpiredHolds');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: '*' } });
+
+// Allow localhost for dev, plus your deployed frontend URL (set via env var once deployed)
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:5174',
+  process.env.FRONTEND_URL, // e.g. https://eventbook.vercel.app
+].filter(Boolean);
+
+const io = new Server(server, { cors: { origin: allowedOrigins } });
 
 app.set('io', io); // so controllers can emit events via req.app.get('io')
-app.use(cors());
+app.use(cors({ origin: allowedOrigins }));
 app.use(express.json());
 
 // Rate limit the booking endpoint specifically - protects against bots
@@ -24,9 +32,9 @@ const bookingLimiter = rateLimit({
   message: { error: 'Too many booking attempts, slow down' },
 });
 
-// Routes (build these out week by week)
- app.use('/api/auth', require('./routes/auth'));
- app.use('/api/events', require('./routes/events'));
+// Routes
+app.use('/api/auth', require('./routes/auth'));
+app.use('/api/events', require('./routes/events'));
 app.use('/api/bookings', bookingLimiter, require('./routes/bookings'));
 
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
