@@ -1,25 +1,25 @@
-const nodemailer = require('nodemailer');
+const SibApiV3Sdk = require('sib-api-v3-sdk');
 require('dotenv').config();
 
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.GMAIL_USER,
-    pass: process.env.GMAIL_APP_PASSWORD,
-  },
-});
+const defaultClient = SibApiV3Sdk.ApiClient.instance;
+const apiKey = defaultClient.authentications['api-key'];
+apiKey.apiKey = process.env.BREVO_API_KEY;
+
+const apiInstance = new SibApiV3Sdk.TransactionalEmailsApi();
 
 /**
- * Sends a booking confirmation email to the user who made the booking.
- * Uses Gmail SMTP - works for any recipient, no domain verification needed.
+ * Sends a booking confirmation email via Brevo's HTTP API.
+ * Uses HTTPS (not SMTP), so it works reliably even on hosts like Render's
+ * free tier that block outbound SMTP ports - and it can send to any
+ * recipient, not just a verified sender address.
  */
 async function sendBookingConfirmation({ toEmail, toName, eventTitle, venue, eventTime, seatNumbers, amount, bookingId }) {
   try {
-    await transporter.sendMail({
-      from: `"EventBook" <${process.env.GMAIL_USER}>`,
-      to: toEmail,
+    const sendSmtpEmail = {
+      sender: { name: 'EventBook', email: process.env.BREVO_SENDER_EMAIL },
+      to: [{ email: toEmail, name: toName }],
       subject: `Booking Confirmed: ${eventTitle}`,
-      html: `
+      htmlContent: `
         <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto; background: #0B0E14; color: #EDEAE3; padding: 32px; border-radius: 8px;">
           <p style="color: #E8B563; font-size: 12px; letter-spacing: 2px; text-transform: uppercase; margin: 0;">Admit One</p>
           <h1 style="font-size: 24px; margin: 8px 0 24px;">${eventTitle}</h1>
@@ -33,7 +33,9 @@ async function sendBookingConfirmation({ toEmail, toName, eventTitle, venue, eve
           <p style="color: #8B93A7; font-size: 12px; margin-top: 32px;">Hi ${toName}, see you at the event!</p>
         </div>
       `,
-    });
+    };
+
+    await apiInstance.sendTransacEmail(sendSmtpEmail);
     console.log(`Confirmation email sent to ${toEmail}`);
   } catch (err) {
     console.error('Failed to send confirmation email:', err.message);
