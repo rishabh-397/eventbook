@@ -42,7 +42,6 @@ async function createEvent(req, res) {
 }
 
 // List all upcoming events, optionally filtered by a search term
-// (matches against event title or venue, case-insensitive)
 async function listEvents(req, res) {
   const { search } = req.query;
   try {
@@ -86,4 +85,28 @@ async function getEventWithSeats(req, res) {
   }
 }
 
-module.exports = { createEvent, listEvents, getEventWithSeats };
+// Admin-only: list all events with booking/revenue stats, for the dashboard
+async function getAdminEventsSummary(req, res) {
+  try {
+    const result = await pool.query(`
+      SELECT
+        e.id, e.title, e.venue, e.event_time,
+        COUNT(DISTINCT s.id) AS total_seats,
+        COUNT(DISTINCT s.id) FILTER (WHERE s.status = 'booked') AS seats_booked,
+        COALESCE(SUM(p.amount) FILTER (WHERE p.status = 'success'), 0) AS revenue
+      FROM events e
+      LEFT JOIN seats s ON s.event_id = e.id
+      LEFT JOIN booking_seats bs ON bs.seat_id = s.id
+      LEFT JOIN bookings b ON b.id = bs.booking_id AND b.status = 'confirmed'
+      LEFT JOIN payments p ON p.booking_id = b.id
+      GROUP BY e.id
+      ORDER BY e.event_time ASC
+    `);
+    return res.status(200).json(result.rows);
+  } catch (err) {
+    console.error('getAdminEventsSummary error:', err);
+    return res.status(500).json({ error: 'Failed to fetch admin summary' });
+  }
+}
+
+module.exports = { createEvent, listEvents, getEventWithSeats, getAdminEventsSummary };

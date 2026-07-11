@@ -15,7 +15,7 @@ export default function EventsPage() {
         .then((res) => setEvents(res.data))
         .catch((err) => console.error(err))
         .finally(() => setLoading(false));
-    }, 300); // debounce - waits 300ms after typing stops before searching
+    }, 300);
 
     return () => clearTimeout(timer);
   }, [search]);
@@ -26,11 +26,16 @@ export default function EventsPage() {
     navigate('/');
   }
 
+  const isAdmin = JSON.parse(localStorage.getItem('user') || '{}').role === 'admin';
+
   return (
     <div style={styles.page}>
       <header style={styles.header}>
         <h1 style={styles.title}>EventBook</h1>
         <div style={{ display: 'flex', gap: 12 }}>
+          {isAdmin && (
+            <button style={styles.logout} onClick={() => navigate('/admin')}>Admin</button>
+          )}
           <button style={styles.logout} onClick={() => navigate('/my-bookings')}>My Bookings</button>
           <button style={styles.logout} onClick={logout}>Log Out</button>
         </div>
