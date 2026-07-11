@@ -23,27 +23,26 @@ app.set('io', io);
 app.use(cors({ origin: allowedOrigins }));
 app.use(express.json());
 
+// NOTE: max temporarily raised to 1000 for load testing concurrency behavior.
+// Revert to 10 before deploying to production.
 const bookingLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 10,
   message: { error: 'Too many booking attempts, slow down' },
 });
 
-app.use('/api/auth', require('./routes/auth'));
-app.use('/api/events', require('./routes/events'));
-app.use('/api/bookings', bookingLimiter, require('./routes/bookings'));
-
-app.get('/health', (req, res) => res.json({ status: 'ok' }));
-
-// Tracks how many sockets are currently viewing each event, in memory.
-// This is ephemeral by design - resets on server restart, which is fine
-// since it represents "right now" viewer count, not historical data.
-const eventViewers = new Map(); // eventId -> Set of socket.ids
+const eventViewers = new Map();
 
 function broadcastViewerCount(eventId) {
   const count = eventViewers.get(eventId)?.size || 0;
   io.to(`event:${eventId}`).emit('viewer_count', { count });
 }
+
+app.use('/api/auth', require('./routes/auth'));
+app.use('/api/events', require('./routes/events'));
+app.use('/api/bookings', bookingLimiter, require('./routes/bookings'));
+
+app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
 io.on('connection', (socket) => {
   let currentEventId = null;
