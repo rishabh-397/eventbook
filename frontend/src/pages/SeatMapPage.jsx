@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../api/client';
 import { io } from 'socket.io-client';
+import PaymentModal from '../components/PaymentModal';
 
 export default function SeatMapPage() {
   const { id } = useParams();
@@ -9,18 +10,18 @@ export default function SeatMapPage() {
   const [event, setEvent] = useState(null);
   const [seats, setSeats] = useState([]);
   const [selected, setSelected] = useState([]);
-  const [booking, setBooking] = useState(null); // { bookingId, expiresAt }
+  const [booking, setBooking] = useState(null);
   const [error, setError] = useState('');
   const [status, setStatus] = useState('');
+  const [showPayment, setShowPayment] = useState(false);
 
   useEffect(() => {
     loadEvent();
 
-    // Live updates: when others hold/book/release seats, refresh
     const socketUrl = import.meta.env.VITE_API_URL
-  ? import.meta.env.VITE_API_URL.replace('/api', '')
-  : 'http://localhost:4000';
-const socket = io(socketUrl);
+      ? import.meta.env.VITE_API_URL.replace('/api', '')
+      : 'http://localhost:4000';
+    const socket = io(socketUrl);
     socket.emit('join_event', id);
     socket.on('seats_held', loadEvent);
     socket.on('seats_booked', loadEvent);
@@ -56,14 +57,17 @@ const socket = io(socketUrl);
     }
   }
 
-  async function confirmBooking() {
+  // Payment modal calls this once the mock payment "succeeds"
+  async function handlePaymentSuccess() {
     setError('');
     try {
       const res = await api.post(`/bookings/${booking.bookingId}/confirm`);
       setStatus('confirmed');
       setBooking((b) => ({ ...b, amount: res.data.amount }));
+      setShowPayment(false);
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to confirm');
+      setShowPayment(false);
     }
   }
 
@@ -81,7 +85,6 @@ const socket = io(socketUrl);
 
   if (!event) return <p style={{ color: 'var(--text-muted)', padding: 40 }}>Loading…</p>;
 
-  // Group seats by row letter for layout
   const rows = {};
   seats.forEach((s) => {
     const row = s.seat_number[0];
@@ -164,7 +167,7 @@ const socket = io(socketUrl);
           </div>
           <div style={styles.perforation} />
           <div style={styles.stubRight}>
-            <button style={styles.holdBtn} onClick={confirmBooking}>Confirm & Pay</button>
+            <button style={styles.holdBtn} onClick={() => setShowPayment(true)}>Confirm & Pay</button>
             <button style={styles.cancelBtn} onClick={cancelBooking}>Cancel</button>
           </div>
         </div>
@@ -178,6 +181,14 @@ const socket = io(socketUrl);
       )}
 
       {error && <p style={styles.error}>{error}</p>}
+
+      {showPayment && (
+        <PaymentModal
+          amount={total}
+          onSuccess={handlePaymentSuccess}
+          onClose={() => setShowPayment(false)}
+        />
+      )}
     </div>
   );
 }

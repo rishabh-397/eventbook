@@ -1,6 +1,7 @@
 const pool = require('../config/db');
 const { redisClient } = require('../config/redis');
 const crypto = require('crypto');
+const { sendBookingConfirmation } = require('../config/email');
 
 const HOLD_DURATION_SECONDS = 300; // 5 minute hold, like real ticketing sites
 
@@ -13,34 +14,23 @@ const HOLD_DURATION_SECONDS = 300; // 5 minute hold, like real ticketing sites
  * millisecond. Redis operations are single-threaded, so SET NX is atomic —
  * no race condition is possible here, unlike a naive
  * "check status, then update status" pattern in plain SQL.
- *
- * Why Redis lock over a DB row lock (SELECT ... FOR UPDATE)?
- * - Faster: in-memory, no DB round trip/transaction overhead per attempt
- * - Auto-expiry: if the app crashes mid-booking, the lock self-releases
- * - Scales better under bursty load (e.g. ticket-drop scenarios)
- * Trade-off: adds an extra moving part (Redis) and needs careful handling
- * if Redis itself goes down (documented in README as a known limitation).
  */
 async function holdSeats(req, res) {
-  const { eventId, seatIds } = req.body; // seatIds: array of seat IDs
-  const userId = req.user.id; // from auth middleware
-  const lockToken = crypto.randomUUID(); // unique per request, prevents releasing someone else's lock
+  const { eventId, seatIds } = req.body;
+  const userId = req.user.id;
+  const lockToken = crypto.randomUUID();
 
   const acquiredLocks = [];
 
   try {
-    // Try to acquire a lock for every requested seat.
     for (const seatId of seatIds) {
       const lockKey = `seat_lock:${seatId}`;
-      // NX = only set if key doesn't exist, EX = auto-expire after N seconds
       const result = await redisClient.set(lockKey, lockToken, {
         NX: true,
         EX: HOLD_DURATION_SECONDS,
       });
 
       if (result === null) {
-        // Someone else already holds this seat — roll back any locks
-        // we already grabbed in this request, then fail cleanly.
         await releaseLocks(acquiredLocks, lockToken);
         return res.status(409).json({
           error: `Seat ${seatId} is already held by another user`,
@@ -49,8 +39,6 @@ async function holdSeats(req, res) {
       acquiredLocks.push(seatId);
     }
 
-    // Locks acquired in Redis — now create the pending booking in Postgres.
-    // This is the source of truth; Redis lock is just the traffic gate.
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
@@ -76,8 +64,6 @@ async function holdSeats(req, res) {
 
       await client.query('COMMIT');
 
-      // Notify everyone else viewing this event that these seats just
-      // became unavailable, in real time (Socket.io, wired in server.js)
       req.app.get('io').to(`event:${eventId}`).emit('seats_held', { seatIds });
 
       return res.status(200).json({ bookingId, expiresAt, lockToken });
@@ -96,8 +82,8 @@ async function holdSeats(req, res) {
 
 /**
  * CONFIRM BOOKING — mock payment success.
- * Marks the booking + seats as permanently booked, releases the Redis lock
- * (no longer needed once truly booked), and creates a payment record.
+ * Marks the booking + seats as permanently booked, releases the Redis lock,
+ * creates a payment record, and sends a confirmation email.
  */
 async function confirmBooking(req, res) {
   const { bookingId } = req.params;
@@ -127,33 +113,47 @@ async function confirmBooking(req, res) {
     }
 
     const seatsResult = await client.query(
-      `SELECT seat_id FROM booking_seats WHERE booking_id = $1`,
+      `SELECT id, seat_number, price FROM seats WHERE id IN
+       (SELECT seat_id FROM booking_seats WHERE booking_id = $1)`,
       [bookingId]
     );
-    const seatIds = seatsResult.rows.map((r) => r.seat_id);
+    const seatIds = seatsResult.rows.map((r) => r.id);
+    const seatNumbers = seatsResult.rows.map((r) => r.seat_number);
 
     await client.query(`UPDATE seats SET status = 'booked' WHERE id = ANY($1)`, [seatIds]);
     await client.query(`UPDATE bookings SET status = 'confirmed' WHERE id = $1`, [bookingId]);
 
-    const priceResult = await client.query(
-      `SELECT SUM(price) as total FROM seats WHERE id = ANY($1)`,
-      [seatIds]
-    );
-    const totalAmount = priceResult.rows[0].total;
+    const totalAmount = seatsResult.rows.reduce((sum, s) => sum + Number(s.price), 0);
 
     await client.query(
       `INSERT INTO payments (booking_id, amount, status) VALUES ($1, $2, 'success')`,
       [bookingId, totalAmount]
     );
 
+    const userResult = await client.query(`SELECT name, email FROM users WHERE id = $1`, [userId]);
+    const eventResult = await client.query(`SELECT title, venue, event_time FROM events WHERE id = $1`, [booking.event_id]);
+    const user = userResult.rows[0];
+    const eventDetails = eventResult.rows[0];
+
     await client.query('COMMIT');
 
-    // Locks are no longer needed - seat is permanently booked now
     for (const seatId of seatIds) {
       await redisClient.del(`seat_lock:${seatId}`);
     }
 
     req.app.get('io').to(`event:${booking.event_id}`).emit('seats_booked', { seatIds });
+
+    // Fire-and-forget email - doesn't block the response if it's slow/fails
+    sendBookingConfirmation({
+      toEmail: user.email,
+      toName: user.name,
+      eventTitle: eventDetails.title,
+      venue: eventDetails.venue,
+      eventTime: eventDetails.event_time,
+      seatNumbers,
+      amount: totalAmount,
+      bookingId,
+    });
 
     return res.status(200).json({ bookingId, status: 'confirmed', amount: totalAmount });
   } catch (err) {
@@ -167,8 +167,7 @@ async function confirmBooking(req, res) {
 
 /**
  * CANCEL BOOKING — user changes their mind before confirming/paying.
- * Releases seats back to available and clears the Redis lock immediately,
- * rather than waiting for the cron job to catch the expiry.
+ * Releases seats back to available and clears the Redis lock immediately.
  */
 async function cancelBooking(req, res) {
   const { bookingId } = req.params;
@@ -221,7 +220,6 @@ async function cancelBooking(req, res) {
 }
 
 // Release Redis locks — only releases locks this request actually owns
-// (checked via lockToken) so we never release someone else's valid lock.
 async function releaseLocks(seatIds, lockToken) {
   for (const seatId of seatIds) {
     const lockKey = `seat_lock:${seatId}`;
