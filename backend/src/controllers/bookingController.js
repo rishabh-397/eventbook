@@ -7,13 +7,8 @@ const HOLD_DURATION_SECONDS = 300; // 5 minute hold, like real ticketing sites
 
 /**
  * HOLD SEATS — the core concurrency-critical endpoint.
- *
- * Strategy: distributed lock per seat using Redis SET with NX (only set if
- * not exists) and an expiry (EX). This guarantees only one request can
- * "win" a given seat, even if two users click the same seat in the same
- * millisecond. Redis operations are single-threaded, so SET NX is atomic —
- * no race condition is possible here, unlike a naive
- * "check status, then update status" pattern in plain SQL.
+ * Uses Redis SET NX (atomic) as a distributed lock so two users can never
+ * both successfully hold the same seat, even under simultaneous requests.
  */
 async function holdSeats(req, res) {
   const { eventId, seatIds } = req.body;
@@ -143,7 +138,6 @@ async function confirmBooking(req, res) {
 
     req.app.get('io').to(`event:${booking.event_id}`).emit('seats_booked', { seatIds });
 
-    // Fire-and-forget email - doesn't block the response if it's slow/fails
     sendBookingConfirmation({
       toEmail: user.email,
       toName: user.name,
@@ -167,7 +161,6 @@ async function confirmBooking(req, res) {
 
 /**
  * CANCEL BOOKING — user changes their mind before confirming/paying.
- * Releases seats back to available and clears the Redis lock immediately.
  */
 async function cancelBooking(req, res) {
   const { bookingId } = req.params;
@@ -219,6 +212,35 @@ async function cancelBooking(req, res) {
   }
 }
 
+/**
+ * GET USER'S BOOKINGS — for the "My Bookings" page.
+ * Returns all bookings for the logged-in user with event + seat details.
+ */
+async function getMyBookings(req, res) {
+  const userId = req.user.id;
+  try {
+    const result = await pool.query(
+      `SELECT
+         b.id AS booking_id, b.status, b.hold_expires_at, b.created_at,
+         e.title AS event_title, e.venue, e.event_time,
+         ARRAY_AGG(s.seat_number ORDER BY s.seat_number) AS seat_numbers,
+         SUM(s.price) AS total_amount
+       FROM bookings b
+       JOIN events e ON b.event_id = e.id
+       JOIN booking_seats bs ON bs.booking_id = b.id
+       JOIN seats s ON s.id = bs.seat_id
+       WHERE b.user_id = $1
+       GROUP BY b.id, e.title, e.venue, e.event_time
+       ORDER BY b.created_at DESC`,
+      [userId]
+    );
+    return res.status(200).json(result.rows);
+  } catch (err) {
+    console.error('getMyBookings error:', err);
+    return res.status(500).json({ error: 'Failed to fetch bookings' });
+  }
+}
+
 // Release Redis locks — only releases locks this request actually owns
 async function releaseLocks(seatIds, lockToken) {
   for (const seatId of seatIds) {
@@ -230,4 +252,4 @@ async function releaseLocks(seatIds, lockToken) {
   }
 }
 
-module.exports = { holdSeats, releaseLocks, confirmBooking, cancelBooking };
+module.exports = { holdSeats, releaseLocks, confirmBooking, cancelBooking, getMyBookings };

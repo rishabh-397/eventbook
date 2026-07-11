@@ -5,14 +5,20 @@ import api from '../api/client';
 export default function EventsPage() {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
   const navigate = useNavigate();
 
   useEffect(() => {
-    api.get('/events')
-      .then((res) => setEvents(res.data))
-      .catch((err) => console.error(err))
-      .finally(() => setLoading(false));
-  }, []);
+    const timer = setTimeout(() => {
+      setLoading(true);
+      api.get('/events', { params: search ? { search } : {} })
+        .then((res) => setEvents(res.data))
+        .catch((err) => console.error(err))
+        .finally(() => setLoading(false));
+    }, 300); // debounce - waits 300ms after typing stops before searching
+
+    return () => clearTimeout(timer);
+  }, [search]);
 
   function logout() {
     localStorage.removeItem('token');
@@ -24,14 +30,24 @@ export default function EventsPage() {
     <div style={styles.page}>
       <header style={styles.header}>
         <h1 style={styles.title}>EventBook</h1>
-        <button style={styles.logout} onClick={logout}>Log Out</button>
+        <div style={{ display: 'flex', gap: 12 }}>
+          <button style={styles.logout} onClick={() => navigate('/my-bookings')}>My Bookings</button>
+          <button style={styles.logout} onClick={logout}>Log Out</button>
+        </div>
       </header>
 
       <p style={styles.eyebrow}>Now Booking</p>
 
+      <input
+        style={styles.search}
+        placeholder="Search by event or venue…"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+      />
+
       {loading && <p style={styles.muted}>Loading events…</p>}
       {!loading && events.length === 0 && (
-        <p style={styles.muted}>No upcoming events yet.</p>
+        <p style={styles.muted}>No events match your search.</p>
       )}
 
       <div style={styles.grid}>
@@ -69,7 +85,12 @@ const styles = {
   },
   eyebrow: {
     color: 'var(--gold)', fontFamily: 'var(--font-mono)', fontSize: 12,
-    letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: 24,
+    letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: 16,
+  },
+  search: {
+    display: 'block', width: '100%', maxWidth: 420, padding: '12px 16px',
+    background: 'var(--bg-elevated)', border: '1px solid var(--border)',
+    borderRadius: 4, color: 'var(--text)', fontSize: 14, marginBottom: 32,
   },
   muted: { color: 'var(--text-muted)' },
   grid: {

@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import AuthPage from './pages/AuthPage';
 import EventsPage from './pages/EventsPage';
 import SeatMapPage from './pages/SeatMapPage';
+import MyBookingsPage from './pages/MyBookingsPage';
 
 function ProtectedRoute({ children }) {
   const token = localStorage.getItem('token');
@@ -26,6 +27,14 @@ export default function App() {
           element={
             <ProtectedRoute>
               <SeatMapPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/my-bookings"
+          element={
+            <ProtectedRoute>
+              <MyBookingsPage />
             </ProtectedRoute>
           }
         />

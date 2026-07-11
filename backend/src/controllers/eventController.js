@@ -19,7 +19,6 @@ async function createEvent(req, res) {
     );
     const eventId = eventResult.rows[0].id;
 
-    // Generate seats: e.g. seatRows=5, seatsPerRow=10 -> A1..A10, B1..B10, ...
     const rowLetters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
     for (let r = 0; r < seatRows; r++) {
       for (let s = 1; s <= seatsPerRow; s++) {
@@ -42,13 +41,23 @@ async function createEvent(req, res) {
   }
 }
 
-// List all upcoming events
+// List all upcoming events, optionally filtered by a search term
+// (matches against event title or venue, case-insensitive)
 async function listEvents(req, res) {
+  const { search } = req.query;
   try {
-    const result = await pool.query(
-      `SELECT id, title, description, venue, event_time
-       FROM events WHERE event_time > NOW() ORDER BY event_time ASC`
-    );
+    let query = `SELECT id, title, description, venue, event_time
+                  FROM events WHERE event_time > NOW()`;
+    const params = [];
+
+    if (search) {
+      params.push(`%${search}%`);
+      query += ` AND (title ILIKE $${params.length} OR venue ILIKE $${params.length})`;
+    }
+
+    query += ` ORDER BY event_time ASC`;
+
+    const result = await pool.query(query, params);
     return res.status(200).json(result.rows);
   } catch (err) {
     console.error('listEvents error:', err);
