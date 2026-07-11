@@ -4,14 +4,21 @@ A full-stack ticket booking platform built to demonstrate real concurrency
 handling (zero double-booking under simultaneous requests), real-time seat
 updates, and production-style backend design — not just a CRUD app.
 
+## Live Demo
+- **App:** https://eventbook-pi.vercel.app
+- **API:** https://eventbook-backend.onrender.com
+- **GitHub:** https://github.com/rishabh-397/eventbook
+
+_Note: the backend is hosted on Render's free tier, which spins down after inactivity — the first request after idle time may take 30-60s to wake up._
+
 ## Stack
 React · Node.js/Express · PostgreSQL (Neon) · Redis (Upstash) · Socket.io · k6
 
 ## Features
 - **Auth** — JWT-based signup/login, admin role support
-- **Event browsing** — search/filter by title or venue
+- **Event browsing** — search/filter by title or venue, seats-remaining urgency indicators
 - **Seat map** — curved venue-style layout with live availability, real-time updates via Socket.io
-- **Booking flow** — hold seats (5 min) → mock payment checkout → confirm → email confirmation
+- **Booking flow** — hold seats (5 min) → mock payment checkout → confirm → email confirmation with QR code
 - **Concurrency-safe locking** — Redis distributed locks prevent double-booking, even under simultaneous requests (see Load Testing below)
 - **My Bookings** — booking history per user
 - **Admin dashboard** — create events, view booking/revenue stats per event
@@ -24,13 +31,13 @@ React · Node.js/Express · PostgreSQL (Neon) · Redis (Upstash) · Socket.io ·
 1. Backend:
 
 cd backend
-cp .env.example .env   # fill in your DATABASE_URL, REDIS_URL, JWT_SECRET, GMAIL_USER, GMAIL_APP_PASSWORD
+cp .env.example .env   # fill in your DATABASE_URL, REDIS_URL, JWT_SECRET, BREVO_API_KEY, BREVO_SENDER_EMAIL
 npm install
 psql $DATABASE_URL -f src/config/schema.sql   # create tables
 npm run dev
 
-2. Frontend:
 
+2. Frontend:
 cd frontend
 npm install
 npm run dev
@@ -77,7 +84,14 @@ under full concurrent load.
   integrating a live payment processor, to avoid requiring business KYC
   verification for a portfolio project; the booking/payment state machine
   itself (hold → pay → confirm) is fully real.
+- **Email via Brevo's HTTP API** instead of SMTP — cloud hosts like
+  Render's free tier commonly block outbound SMTP ports, so an HTTP-based
+  provider was used for reliable delivery to any recipient.
 
-## What's Next
-- [ ] Deployment (Render + Vercel)
-- [ ] CI/CD via GitHub Actions
+## Deployment
+- **Backend:** Render (Node/Express web service)
+- **Frontend:** Vercel (Vite build)
+- **Database:** Neon (serverless PostgreSQL)
+- **Cache/Locking:** Upstash (serverless Redis)
+- **Email:** Brevo (transactional email API)
+
