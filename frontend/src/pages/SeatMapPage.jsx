@@ -57,7 +57,6 @@ export default function SeatMapPage() {
     }
   }
 
-  // Payment modal calls this once the mock payment "succeeds"
   async function handlePaymentSuccess() {
     setError('');
     try {
@@ -92,6 +91,7 @@ export default function SeatMapPage() {
     rows[row].push(s);
   });
 
+  const sortedRowKeys = Object.keys(rows).sort();
   const selectedSeats = seats.filter((s) => selected.includes(s.id));
   const total = selectedSeats.reduce((sum, s) => sum + Number(s.price), 0);
 
@@ -109,39 +109,46 @@ export default function SeatMapPage() {
         <span style={styles.legendItem}><i style={{ ...styles.dot, background: 'var(--seat-selected)' }} /> Selected</span>
       </div>
 
+      <div style={styles.stageWrap}>
+        <div style={styles.stage}>STAGE</div>
+      </div>
+
       <div style={styles.seatMap}>
-        {Object.keys(rows).sort().map((row) => (
-          <div key={row} style={styles.row}>
-            <span style={styles.rowLabel}>{row}</span>
-            {rows[row]
-              .sort((a, b) => a.seat_number.localeCompare(b.seat_number, undefined, { numeric: true }))
-              .map((seat) => {
-                const isSelected = selected.includes(seat.id);
-                const isAvailable = seat.status === 'available';
-                return (
-                  <button
-                    key={seat.id}
-                    onClick={() => toggleSeat(seat)}
-                    disabled={!isAvailable}
-                    style={{
-                      ...styles.seat,
-                      background: isSelected
-                        ? 'var(--seat-selected)'
-                        : isAvailable ? 'transparent' : 'var(--seat-held)',
-                      borderColor: isSelected
-                        ? 'var(--seat-selected)'
-                        : isAvailable ? 'var(--seat-available)' : 'var(--seat-held)',
-                      cursor: isAvailable ? 'pointer' : 'not-allowed',
-                      opacity: isAvailable || isSelected ? 1 : 0.5,
-                    }}
-                    title={seat.seat_number}
-                  >
-                    {seat.seat_number.slice(1)}
-                  </button>
-                );
-              })}
-          </div>
-        ))}
+        {sortedRowKeys.map((row, rowIndex) => {
+          const curveOffset = Math.abs(rowIndex - (sortedRowKeys.length - 1) / 2) * 8;
+          return (
+            <div key={row} style={{ ...styles.row, marginLeft: curveOffset }}>
+              <span style={styles.rowLabel}>{row}</span>
+              {rows[row]
+                .sort((a, b) => a.seat_number.localeCompare(b.seat_number, undefined, { numeric: true }))
+                .map((seat) => {
+                  const isSelected = selected.includes(seat.id);
+                  const isAvailable = seat.status === 'available';
+                  return (
+                    <button
+                      key={seat.id}
+                      onClick={() => toggleSeat(seat)}
+                      disabled={!isAvailable}
+                      style={{
+                        ...styles.seat,
+                        background: isSelected
+                          ? 'var(--seat-selected)'
+                          : isAvailable ? 'transparent' : 'var(--seat-held)',
+                        borderColor: isSelected
+                          ? 'var(--seat-selected)'
+                          : isAvailable ? 'var(--seat-available)' : 'var(--seat-held)',
+                        cursor: isAvailable ? 'pointer' : 'not-allowed',
+                        opacity: isAvailable || isSelected ? 1 : 0.5,
+                      }}
+                      title={seat.seat_number}
+                    >
+                      {seat.seat_number.slice(1)}
+                    </button>
+                  );
+                })}
+            </div>
+          );
+        })}
       </div>
 
       {selected.length > 0 && !booking && (
@@ -208,7 +215,20 @@ const styles = {
   legend: { display: 'flex', gap: 20, marginBottom: 32 },
   legendItem: { display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-muted)' },
   dot: { width: 10, height: 10, borderRadius: '50%', display: 'inline-block' },
-  seatMap: { display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 40 },
+  stageWrap: { display: 'flex', justifyContent: 'center', marginBottom: 32 },
+  stage: {
+    width: '60%',
+    padding: '10px 0',
+    textAlign: 'center',
+    background: 'linear-gradient(180deg, rgba(232,181,99,0.15), transparent)',
+    border: '1px solid var(--gold)',
+    borderRadius: '50% 50% 8px 8px / 100% 100% 8px 8px',
+    color: 'var(--gold)',
+    fontFamily: 'var(--font-mono)',
+    fontSize: 11,
+    letterSpacing: '0.2em',
+  },
+  seatMap: { display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 40, alignItems: 'center' },
   row: { display: 'flex', alignItems: 'center', gap: 6 },
   rowLabel: {
     width: 24, fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', fontSize: 13,
