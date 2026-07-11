@@ -1,16 +1,32 @@
-# React + Vite
+# EventBook — Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+React + Vite frontend for EventBook, a full-stack seat booking platform.
 
-Currently, two official plugins are available:
+See the [main README](../README.md) for full project details, architecture decisions, and load test results.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Stack
+React · React Router · Socket.io Client · Axios
 
-## React Compiler
+## Local Setup
+npm install
+npm run dev
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Runs on `http://localhost:5173` by default. Requires the backend running (see `../backend/README.md` or main README) and a `.env` file with:
 
-## Expanding the Oxlint configuration
+VITE_API_URL=http://localhost:4000/api
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+
+## Structure
+
+src/
+├── api/            # Axios client with auth interceptor
+├── components/     # Reusable UI (payment modal, starfield background)
+├── context/        # Theme context (accent color switching)
+├── pages/          # Route-level pages (auth, events, seat map, bookings, admin)
+
+
+## Build
+
+npm run build
+Outputs to `dist/`, deployed via Vercel.
+
