@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/client';
+import StarfieldBackground from '../components/StarfieldBackground';
 
 export default function AuthPage() {
-  const [mode, setMode] = useState('login'); // 'login' or 'signup'
+  const [mode, setMode] = useState('login');
   const [form, setForm] = useState({ name: '', email: '', password: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -31,7 +32,8 @@ export default function AuthPage() {
 
   return (
     <div style={styles.page}>
-      <div style={styles.card}>
+      <StarfieldBackground />
+      <div style={{ ...styles.card, position: 'relative', zIndex: 1 }}>
         <p style={styles.eyebrow}>Admit One</p>
         <h1 style={styles.title}>EventBook</h1>
 
@@ -95,11 +97,14 @@ const styles = {
     alignItems: 'center',
     justifyContent: 'center',
     background: 'var(--bg)',
+    position: 'relative',
+    overflow: 'hidden',
   },
   card: {
     width: 380,
     padding: '40px 32px',
-    background: 'var(--bg-elevated)',
+    background: 'rgba(18, 22, 31, 0.85)',
+    backdropFilter: 'blur(8px)',
     border: '1px solid var(--border)',
     borderRadius: 4,
   },

@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/client';
+import { useTheme } from '../context/ThemeContext';
 
 export default function EventsPage() {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const navigate = useNavigate();
+  const { themeName, setThemeName, themes } = useTheme();
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -32,7 +34,22 @@ export default function EventsPage() {
     <div style={styles.page}>
       <header style={styles.header}>
         <h1 style={styles.title}>EventBook</h1>
-        <div style={{ display: 'flex', gap: 12 }}>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: 6 }}>
+            {Object.keys(themes).map((name) => (
+              <button
+                key={name}
+                onClick={() => setThemeName(name)}
+                title={name}
+                style={{
+                  width: 22, height: 22, borderRadius: '50%',
+                  background: themes[name].accent,
+                  border: themeName === name ? '2px solid var(--text)' : '2px solid transparent',
+                  cursor: 'pointer', padding: 0,
+                }}
+              />
+            ))}
+          </div>
           {isAdmin && (
             <button style={styles.logout} onClick={() => navigate('/admin')}>Admin</button>
           )}

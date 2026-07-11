@@ -1,43 +1,48 @@
 :root {
-     --bg: #0B0E14;
-     --bg-elevated: #12161F;
-     --gold: #E8B563;
-     --text: #EDEAE3;
-     --text-muted: #8B93A7;
-     --seat-available: #4A9B7F;
-     --seat-held: #C1443D;
-     --seat-selected: #E8B563;
-     --border: #232838;
+  --bg: #0B0E14;
+  --bg-elevated: #12161F;
+  --gold: #E8B563;
+  --text: #EDEAE3;
+  --text-muted: #8B93A7;
+  --seat-available: #4A9B7F;
+  --seat-held: #C1443D;
+  --seat-selected: #E8B563;
+  --border: #232838;
 
-     --font-display: 'Oswald', 'Arial Narrow', sans-serif;
-     --font-body: 'Inter', -apple-system, sans-serif;
-     --font-mono: 'JetBrains Mono', 'Courier New', monospace;
-   }
+  --font-display: 'Oswald', 'Arial Narrow', sans-serif;
+  --font-body: 'Inter', -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Courier New', monospace;
+}
 
-   * { box-sizing: border-box; }
+* { box-sizing: border-box; }
 
-   body {
-     margin: 0;
-     background: var(--bg);
-     color: var(--text);
-     font-family: var(--font-body);
-   }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+}
 
-   h1, h2, h3, .marquee {
-     font-family: var(--font-display);
-     text-transform: uppercase;
-     letter-spacing: 0.02em;
-   }
+h1, h2, h3, .marquee {
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
 
-   .mono { font-family: var(--font-mono); }
+.mono { font-family: var(--font-mono); }
 
-   button {
-     font-family: var(--font-body);
-     cursor: pointer;
-   }
+button {
+  font-family: var(--font-body);
+  cursor: pointer;
+}
 
-   a { color: var(--gold); text-decoration: none; }
-   
-   @keyframes spin {
+a { color: var(--gold); text-decoration: none; }
+
+@keyframes spin {
   to { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
 }

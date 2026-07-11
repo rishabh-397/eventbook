@@ -14,6 +14,7 @@ export default function SeatMapPage() {
   const [error, setError] = useState('');
   const [status, setStatus] = useState('');
   const [showPayment, setShowPayment] = useState(false);
+  const [viewerCount, setViewerCount] = useState(0);
 
   useEffect(() => {
     loadEvent();
@@ -26,6 +27,7 @@ export default function SeatMapPage() {
     socket.on('seats_held', loadEvent);
     socket.on('seats_booked', loadEvent);
     socket.on('seats_released', loadEvent);
+    socket.on('viewer_count', ({ count }) => setViewerCount(count));
 
     return () => socket.disconnect();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -101,7 +103,15 @@ export default function SeatMapPage() {
 
       <p style={styles.eyebrow}>{new Date(event.event_time).toDateString()}</p>
       <h1 style={styles.title}>{event.title}</h1>
-      <p style={styles.venue}>{event.venue}</p>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
+        <p style={{ ...styles.venue, margin: 0 }}>{event.venue}</p>
+        {viewerCount > 0 && (
+          <span style={styles.liveIndicator}>
+            🔥 {viewerCount} viewing now
+          </span>
+        )}
+      </div>
 
       <div style={styles.legend}>
         <span style={styles.legendItem}><i style={{ ...styles.dot, background: 'var(--seat-available)' }} /> Available</span>
@@ -211,7 +221,12 @@ const styles = {
     letterSpacing: '0.1em', textTransform: 'uppercase', margin: 0,
   },
   title: { fontSize: 32, margin: '4px 0' },
-  venue: { color: 'var(--text-muted)', marginBottom: 24 },
+  venue: { color: 'var(--text-muted)' },
+  liveIndicator: {
+    fontSize: 12, color: 'var(--seat-held)', fontFamily: 'var(--font-mono)',
+    border: '1px solid var(--seat-held)', padding: '4px 10px', borderRadius: 20,
+    animation: 'pulse 2s infinite',
+  },
   legend: { display: 'flex', gap: 20, marginBottom: 32 },
   legendItem: { display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-muted)' },
   dot: { width: 10, height: 10, borderRadius: '50%', display: 'inline-block' },

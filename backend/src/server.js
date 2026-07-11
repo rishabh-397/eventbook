@@ -11,38 +11,58 @@ const { startExpiredHoldsJob } = require('./jobs/releaseExpiredHolds');
 const app = express();
 const server = http.createServer(app);
 
-// Allow localhost for dev, plus your deployed frontend URL (set via env var once deployed)
 const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:5174',
-  process.env.FRONTEND_URL, // e.g. https://eventbook.vercel.app
+  process.env.FRONTEND_URL,
 ].filter(Boolean);
 
 const io = new Server(server, { cors: { origin: allowedOrigins } });
 
-app.set('io', io); // so controllers can emit events via req.app.get('io')
+app.set('io', io);
 app.use(cors({ origin: allowedOrigins }));
 app.use(express.json());
 
-// Rate limit the booking endpoint specifically - protects against bots
-// hammering seat holds during a popular event drop.
 const bookingLimiter = rateLimit({
   windowMs: 60 * 1000,
-  max: 10, // 10 hold attempts per minute per IP
+  max: 10,
   message: { error: 'Too many booking attempts, slow down' },
 });
 
-// Routes
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/events', require('./routes/events'));
 app.use('/api/bookings', bookingLimiter, require('./routes/bookings'));
 
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
-// Socket.io: clients join a room per event to get live seat updates
+// Tracks how many sockets are currently viewing each event, in memory.
+// This is ephemeral by design - resets on server restart, which is fine
+// since it represents "right now" viewer count, not historical data.
+const eventViewers = new Map(); // eventId -> Set of socket.ids
+
+function broadcastViewerCount(eventId) {
+  const count = eventViewers.get(eventId)?.size || 0;
+  io.to(`event:${eventId}`).emit('viewer_count', { count });
+}
+
 io.on('connection', (socket) => {
+  let currentEventId = null;
+
   socket.on('join_event', (eventId) => {
     socket.join(`event:${eventId}`);
+    currentEventId = eventId;
+
+    if (!eventViewers.has(eventId)) eventViewers.set(eventId, new Set());
+    eventViewers.get(eventId).add(socket.id);
+
+    broadcastViewerCount(eventId);
+  });
+
+  socket.on('disconnect', () => {
+    if (currentEventId && eventViewers.has(currentEventId)) {
+      eventViewers.get(currentEventId).delete(socket.id);
+      broadcastViewerCount(currentEventId);
+    }
   });
 });
 
