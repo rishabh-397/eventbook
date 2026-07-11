@@ -3,6 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import api from '../api/client';
 import { io } from 'socket.io-client';
 import PaymentModal from '../components/PaymentModal';
+import { QRCodeSVG } from 'qrcode.react';
+import toast from 'react-hot-toast';
 
 export default function SeatMapPage() {
   const { id } = useParams();
@@ -55,7 +57,9 @@ export default function SeatMapPage() {
       setStatus('held');
       loadEvent();
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to hold seats');
+      const msg = err.response?.data?.error || 'Failed to hold seats';
+      setError(msg);
+      toast.error(msg);
     }
   }
 
@@ -66,8 +70,11 @@ export default function SeatMapPage() {
       setStatus('confirmed');
       setBooking((b) => ({ ...b, amount: res.data.amount }));
       setShowPayment(false);
+      toast.success('Booking confirmed!');
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to confirm');
+      const msg = err.response?.data?.error || 'Failed to confirm';
+      setError(msg);
+      toast.error(msg);
       setShowPayment(false);
     }
   }
@@ -194,6 +201,9 @@ export default function SeatMapPage() {
         <div style={styles.confirmedStub}>
           <p style={styles.stubLabel}>Booking Confirmed 🎟</p>
           <p style={styles.stubValue}>Booking #{booking.bookingId} · ₹{booking.amount}</p>
+          <div style={{ background: '#fff', padding: 8, borderRadius: 4, display: 'inline-block', marginTop: 12 }}>
+            <QRCodeSVG value={`EVENTBOOK-CONFIRMED-${booking.bookingId}`} size={100} />
+          </div>
         </div>
       )}
 

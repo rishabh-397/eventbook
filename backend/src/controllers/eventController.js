@@ -1,6 +1,5 @@
 const pool = require('../config/db');
 
-// Create an event with seats in one go (admin only, checked via middleware)
 async function createEvent(req, res) {
   const { title, description, venue, eventTime, seatRows, seatsPerRow, price } = req.body;
 
@@ -41,20 +40,25 @@ async function createEvent(req, res) {
   }
 }
 
-// List all upcoming events, optionally filtered by a search term
+// List all upcoming events, with available seat counts, optionally filtered by search
 async function listEvents(req, res) {
   const { search } = req.query;
   try {
-    let query = `SELECT id, title, description, venue, event_time
-                  FROM events WHERE event_time > NOW()`;
+    let query = `
+      SELECT e.id, e.title, e.description, e.venue, e.event_time,
+        COUNT(s.id) FILTER (WHERE s.status = 'available') AS seats_available,
+        COUNT(s.id) AS total_seats
+      FROM events e
+      LEFT JOIN seats s ON s.event_id = e.id
+      WHERE e.event_time > NOW()`;
     const params = [];
 
     if (search) {
       params.push(`%${search}%`);
-      query += ` AND (title ILIKE $${params.length} OR venue ILIKE $${params.length})`;
+      query += ` AND (e.title ILIKE $${params.length} OR e.venue ILIKE $${params.length})`;
     }
 
-    query += ` ORDER BY event_time ASC`;
+    query += ` GROUP BY e.id ORDER BY e.event_time ASC`;
 
     const result = await pool.query(query, params);
     return res.status(200).json(result.rows);
@@ -64,7 +68,6 @@ async function listEvents(req, res) {
   }
 }
 
-// Get one event with its full seat map
 async function getEventWithSeats(req, res) {
   const { id } = req.params;
   try {
@@ -85,7 +88,6 @@ async function getEventWithSeats(req, res) {
   }
 }
 
-// Admin-only: list all events with booking/revenue stats, for the dashboard
 async function getAdminEventsSummary(req, res) {
   try {
     const result = await pool.query(`

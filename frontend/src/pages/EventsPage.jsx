@@ -86,6 +86,9 @@ export default function EventsPage() {
             </p>
             <h2 style={styles.cardTitle}>{ev.title}</h2>
             <p style={styles.cardVenue}>{ev.venue}</p>
+            {Number(ev.seats_available) <= 10 && (
+              <p style={styles.urgency}>Only {ev.seats_available} seats left!</p>
+            )}
             <p style={styles.cardCta}>View Seats →</p>
           </div>
         ))}
@@ -126,6 +129,7 @@ const styles = {
     fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-muted)', margin: '0 0 8px',
   },
   cardTitle: { fontSize: 20, margin: '0 0 4px' },
-  cardVenue: { color: 'var(--text-muted)', fontSize: 14, margin: '0 0 20px' },
+  cardVenue: { color: 'var(--text-muted)', fontSize: 14, margin: '0 0 8px' },
+  urgency: { color: 'var(--seat-held)', fontSize: 12, fontWeight: 600, margin: '0 0 12px' },
   cardCta: { color: 'var(--gold)', fontSize: 13, fontWeight: 600, margin: 0 },
 };
