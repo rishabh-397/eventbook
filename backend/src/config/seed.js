@@ -1,34 +1,90 @@
 require('dotenv').config();
 const pool = require('./db');
 
-// Realistic sample events across different categories
-const events = [
-  { title: 'Coldplay: Music of the Spheres Tour', venue: 'DY Patil Stadium, Mumbai', daysFromNow: 45, price: 3500 },
-  { title: 'AR Rahman Live in Concert', venue: 'Jawaharlal Nehru Stadium, Delhi', daysFromNow: 20, price: 2800 },
-  { title: 'Arijit Singh — Unplugged', venue: 'Phoenix Arena, Bangalore', daysFromNow: 30, price: 2200 },
-  { title: 'Stand-Up Comedy Night ft. Zakir Khan', venue: 'The Habitat, Mumbai', daysFromNow: 10, price: 900 },
-  { title: 'IPL Final 2026', venue: 'Narendra Modi Stadium, Ahmedabad', daysFromNow: 60, price: 5000 },
-  { title: 'Sunburn Festival', venue: 'Vagator Beach, Goa', daysFromNow: 90, price: 4000 },
-  { title: 'Diljit Dosanjh: Dil-Luminati Tour', venue: 'Gachibowli Stadium, Hyderabad', daysFromNow: 25, price: 3000 },
-  { title: 'The Local Train — Live', venue: 'Hard Rock Cafe, Pune', daysFromNow: 15, price: 1200 },
-  { title: 'NH7 Weekender', venue: 'Mahalaxmi Lawns, Pune', daysFromNow: 75, price: 3200 },
-  { title: 'Prateek Kuhad — Acoustic Evening', venue: 'Blue Frog, Mumbai', daysFromNow: 12, price: 1500 },
-  { title: 'Broadway Musical: The Lion King', venue: 'NCPA, Mumbai', daysFromNow: 40, price: 2500 },
-  { title: 'Comic Con India', venue: 'Bombay Exhibition Centre', daysFromNow: 55, price: 800 },
-  { title: 'Zakir Hussain — Tabla Recital', venue: 'Siri Fort Auditorium, Delhi', daysFromNow: 35, price: 1800 },
-  { title: 'Sunidhi Chauhan Live', venue: 'EKA Arena, Ahmedabad', daysFromNow: 22, price: 2000 },
-  { title: 'Kabir Singh Fan Fest', venue: 'YMCA Grounds, Chennai', daysFromNow: 18, price: 700 },
-  { title: 'Vir Das: Netflix Special Taping', venue: 'Canvas Laugh Club, Mumbai', daysFromNow: 8, price: 1600 },
-  { title: 'Ranveer Allahbadia Podcast Live', venue: 'Jio World Garden, Mumbai', daysFromNow: 28, price: 1100 },
-  { title: 'Classical Fusion Night', venue: 'Nehru Centre, Mumbai', daysFromNow: 33, price: 1300 },
-  { title: 'Rock On Reunion Tour', venue: 'Andheri Sports Complex, Mumbai', daysFromNow: 48, price: 2600 },
-  { title: 'New Year EDM Night', venue: 'Kingdom of Dreams, Gurugram', daysFromNow: 100, price: 3800 },
+const eventTypes = [
+  { prefix: 'Live in Concert' },
+  { prefix: 'World Tour' },
+  { prefix: 'Unplugged' },
+  { prefix: 'Stand-Up Comedy Night' },
+  { prefix: 'Comedy Special' },
+  { prefix: 'Theatre Production' },
+  { prefix: 'Dance Recital' },
+  { prefix: 'Classical Music Evening' },
+  { prefix: 'Film Screening' },
+  { prefix: 'Poetry Slam' },
+  { prefix: 'Sports Championship' },
+  { prefix: 'Fan Convention' },
+  { prefix: 'Food & Music Festival' },
+  { prefix: 'DJ Night' },
+  { prefix: 'Cultural Fest' },
 ];
 
-async function seed() {
-  console.log('Seeding events...');
+const artists = [
+  'Coldplay', 'AR Rahman', 'Arijit Singh', 'Zakir Khan', 'Diljit Dosanjh',
+  'Prateek Kuhad', 'Sunidhi Chauhan', 'Vir Das', 'Zakir Hussain', 'Shreya Ghoshal',
+  'Anirudh Ravichander', 'Ritviz', 'Nucleya', 'Papon', 'KK Tribute',
+  'Local Train', 'When Chai Met Toast', 'Parikrama', 'Indian Ocean', 'Euphoria',
+  'Kailash Kher', 'Sonu Nigam', 'Shankar Mahadevan', 'Amit Trivedi', 'Jubin Nautiyal',
+  'Neha Kakkar', 'Badshah', 'Divine', 'Raftaar', 'Ranveer Allahbadia',
+];
 
-  // Find an admin user to attribute events to (uses your existing test admin)
+// 40+ Indian cities, each with a generic venue name generated below
+const cities = [
+  'Mumbai', 'Delhi', 'Bangalore', 'Hyderabad', 'Ahmedabad', 'Chennai', 'Pune',
+  'Goa', 'Gurugram', 'Kolkata', 'Jaipur', 'Lucknow', 'Chandigarh', 'Indore',
+  'Bhopal', 'Nagpur', 'Surat', 'Kochi', 'Coimbatore', 'Visakhapatnam',
+  'Patna', 'Ranchi', 'Bhubaneswar', 'Guwahati', 'Dehradun', 'Amritsar',
+  'Ludhiana', 'Nashik', 'Vadodara', 'Rajkot', 'Mysuru', 'Thiruvananthapuram',
+  'Jodhpur', 'Udaipur', 'Agra', 'Varanasi', 'Shimla', 'Manali', 'Pondicherry',
+  'Noida', 'Faridabad', 'Raipur', 'Siliguri',
+];
+
+const venueTypes = [
+  'Stadium', 'Arena', 'Convention Center', 'Auditorium', 'Amphitheatre',
+  'Sports Complex', 'Exhibition Grounds', 'Cultural Centre', 'Club', 'Grounds',
+];
+
+function randomFrom(arr) {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+function randomDateUntil2030() {
+  const now = Date.now();
+  const end2030 = new Date('2030-12-31T23:59:59Z').getTime();
+  const randomTime = now + Math.random() * (end2030 - now);
+  return new Date(randomTime);
+}
+
+function generateEvents(count) {
+  const events = [];
+  const usedKeys = new Set();
+
+  while (events.length < count) {
+    const type = randomFrom(eventTypes);
+    const artist = randomFrom(artists);
+    const city = randomFrom(cities);
+    const venueType = randomFrom(venueTypes);
+    const venueName = `${city} ${venueType}`;
+    const title = `${artist}: ${type.prefix}`;
+
+    const key = `${title}-${venueName}-${events.length}`;
+    if (usedKeys.has(key)) continue;
+    usedKeys.add(key);
+
+    events.push({
+      title,
+      venue: `${venueName}, ${city}`,
+      eventTime: randomDateUntil2030(),
+      price: [500, 800, 1200, 1500, 2000, 2500, 3000, 3500, 4000, 5000][Math.floor(Math.random() * 10)],
+    });
+  }
+
+  return events;
+}
+
+async function seed() {
+  console.log('Seeding 200 additional events across 40+ cities (spread through 2030)...');
+
   const adminResult = await pool.query(`SELECT id FROM users WHERE role = 'admin' LIMIT 1`);
   if (adminResult.rows.length === 0) {
     console.error('No admin user found. Create one first (set role=admin on a user).');
@@ -36,9 +92,10 @@ async function seed() {
   }
   const adminId = adminResult.rows[0].id;
 
-  for (const ev of events) {
-    const eventTime = new Date(Date.now() + ev.daysFromNow * 24 * 60 * 60 * 1000);
+  const events = generateEvents(200);
+  let successCount = 0;
 
+  for (const ev of events) {
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
@@ -46,11 +103,10 @@ async function seed() {
       const eventResult = await client.query(
         `INSERT INTO events (title, description, venue, event_time, created_by)
          VALUES ($1, $2, $3, $4, $5) RETURNING id`,
-        [ev.title, `Live event at ${ev.venue}`, ev.venue, eventTime, adminId]
+        [ev.title, `Live event at ${ev.venue}`, ev.venue, ev.eventTime, adminId]
       );
       const eventId = eventResult.rows[0].id;
 
-      // 5 rows x 10 seats = 50 seats per event, same as before
       const rowLetters = 'ABCDE';
       for (let r = 0; r < rowLetters.length; r++) {
         for (let s = 1; s <= 10; s++) {
@@ -62,7 +118,8 @@ async function seed() {
       }
 
       await client.query('COMMIT');
-      console.log(`✓ Created: ${ev.title}`);
+      successCount++;
+      if (successCount % 25 === 0) console.log(`  ...${successCount} events created so far`);
     } catch (err) {
       await client.query('ROLLBACK');
       console.error(`✗ Failed: ${ev.title}`, err.message);
@@ -71,7 +128,7 @@ async function seed() {
     }
   }
 
-  console.log('Done seeding!');
+  console.log(`Done! Created ${successCount} new events across 40+ cities, dated up to Dec 2030.`);
   process.exit(0);
 }
 
