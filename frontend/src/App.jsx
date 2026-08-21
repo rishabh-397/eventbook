@@ -4,6 +4,7 @@ import EventsPage from './pages/EventsPage';
 import SeatMapPage from './pages/SeatMapPage';
 import MyBookingsPage from './pages/MyBookingsPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
+import ChatWidget from './components/ChatWidget';
 
 function ProtectedRoute({ children }) {
   const token = localStorage.getItem('token');
@@ -13,12 +14,41 @@ function ProtectedRoute({ children }) {
 export default function App() {
   return (
     <BrowserRouter>
+      <ChatWidget />
       <Routes>
         <Route path="/" element={<AuthPage />} />
-        <Route path="/events" element={<ProtectedRoute><EventsPage /></ProtectedRoute>} />
-        <Route path="/events/:id" element={<ProtectedRoute><SeatMapPage /></ProtectedRoute>} />
-        <Route path="/my-bookings" element={<ProtectedRoute><MyBookingsPage /></ProtectedRoute>} />
-        <Route path="/admin" element={<ProtectedRoute><AdminDashboardPage /></ProtectedRoute>} />
+        <Route
+          path="/events"
+          element={
+            <ProtectedRoute>
+              <EventsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/events/:id"
+          element={
+            <ProtectedRoute>
+              <SeatMapPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/my-bookings"
+          element={
+            <ProtectedRoute>
+              <MyBookingsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin"
+          element={
+            <ProtectedRoute>
+              <AdminDashboardPage />
+            </ProtectedRoute>
+          }
+        />
       </Routes>
     </BrowserRouter>
   );

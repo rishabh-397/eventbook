@@ -92,7 +92,7 @@ async function seed() {
   }
   const adminId = adminResult.rows[0].id;
 
-  const events = generateEvents(200);
+  const events = generateEvents(100);
   let successCount = 0;
 
   for (const ev of events) {

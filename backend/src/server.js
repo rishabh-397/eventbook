@@ -41,6 +41,7 @@ function broadcastViewerCount(eventId) {
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/events', require('./routes/events'));
 app.use('/api/bookings', bookingLimiter, require('./routes/bookings'));
+app.use('/api/chat', require('./routes/chat'));
 
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
