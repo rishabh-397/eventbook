@@ -2,6 +2,7 @@ const pool = require('../config/db');
 const { redisClient } = require('../config/redis');
 const crypto = require('crypto');
 const { sendBookingConfirmation } = require('../config/email');
+const genAI = require('../config/ai');
 
 const HOLD_DURATION_SECONDS = 300; // 5 minute hold, like real ticketing sites
 
@@ -31,19 +32,25 @@ async function holdSeats(req, res) {
           error: `Seat ${seatId} is already held by another user`,
         });
       }
+
       acquiredLocks.push(seatId);
     }
 
     const client = await pool.connect();
+
     try {
       await client.query('BEGIN');
 
-      const expiresAt = new Date(Date.now() + HOLD_DURATION_SECONDS * 1000);
+      const expiresAt = new Date(
+        Date.now() + HOLD_DURATION_SECONDS * 1000
+      );
+
       const bookingResult = await client.query(
         `INSERT INTO bookings (user_id, event_id, status, hold_expires_at)
          VALUES ($1, $2, 'pending', $3) RETURNING id`,
         [userId, eventId, expiresAt]
       );
+
       const bookingId = bookingResult.rows[0].id;
 
       for (const seatId of seatIds) {
@@ -51,6 +58,7 @@ async function holdSeats(req, res) {
           `INSERT INTO booking_seats (booking_id, seat_id) VALUES ($1, $2)`,
           [bookingId, seatId]
         );
+
         await client.query(
           `UPDATE seats SET status = 'held' WHERE id = $1`,
           [seatId]
@@ -59,9 +67,16 @@ async function holdSeats(req, res) {
 
       await client.query('COMMIT');
 
-      req.app.get('io').to(`event:${eventId}`).emit('seats_held', { seatIds });
+      req.app
+        .get('io')
+        .to(`event:${eventId}`)
+        .emit('seats_held', { seatIds });
 
-      return res.status(200).json({ bookingId, expiresAt, lockToken });
+      return res.status(200).json({
+        bookingId,
+        expiresAt,
+        lockToken,
+      });
     } catch (dbErr) {
       await client.query('ROLLBACK');
       await releaseLocks(acquiredLocks, lockToken);
@@ -71,7 +86,9 @@ async function holdSeats(req, res) {
     }
   } catch (err) {
     console.error('holdSeats error:', err);
-    return res.status(500).json({ error: 'Failed to hold seats' });
+    return res.status(500).json({
+      error: 'Failed to hold seats',
+    });
   }
 }
 
@@ -85,6 +102,7 @@ async function confirmBooking(req, res) {
   const userId = req.user.id;
 
   const client = await pool.connect();
+
   try {
     await client.query('BEGIN');
 
@@ -92,19 +110,28 @@ async function confirmBooking(req, res) {
       `SELECT * FROM bookings WHERE id = $1 AND user_id = $2`,
       [bookingId, userId]
     );
+
     const booking = bookingResult.rows[0];
 
     if (!booking) {
       await client.query('ROLLBACK');
-      return res.status(404).json({ error: 'Booking not found' });
+      return res.status(404).json({
+        error: 'Booking not found',
+      });
     }
+
     if (booking.status !== 'pending') {
       await client.query('ROLLBACK');
-      return res.status(400).json({ error: `Booking is already ${booking.status}` });
+      return res.status(400).json({
+        error: `Booking is already ${booking.status}`,
+      });
     }
+
     if (new Date(booking.hold_expires_at) < new Date()) {
       await client.query('ROLLBACK');
-      return res.status(410).json({ error: 'Hold has expired, please book again' });
+      return res.status(410).json({
+        error: 'Hold has expired, please book again',
+      });
     }
 
     const seatsResult = await client.query(
@@ -112,21 +139,41 @@ async function confirmBooking(req, res) {
        (SELECT seat_id FROM booking_seats WHERE booking_id = $1)`,
       [bookingId]
     );
+
     const seatIds = seatsResult.rows.map((r) => r.id);
     const seatNumbers = seatsResult.rows.map((r) => r.seat_number);
 
-    await client.query(`UPDATE seats SET status = 'booked' WHERE id = ANY($1)`, [seatIds]);
-    await client.query(`UPDATE bookings SET status = 'confirmed' WHERE id = $1`, [bookingId]);
-
-    const totalAmount = seatsResult.rows.reduce((sum, s) => sum + Number(s.price), 0);
+    await client.query(
+      `UPDATE seats SET status = 'booked' WHERE id = ANY($1)`,
+      [seatIds]
+    );
 
     await client.query(
-      `INSERT INTO payments (booking_id, amount, status) VALUES ($1, $2, 'success')`,
+      `UPDATE bookings SET status = 'confirmed' WHERE id = $1`,
+      [bookingId]
+    );
+
+    const totalAmount = seatsResult.rows.reduce(
+      (sum, s) => sum + Number(s.price),
+      0
+    );
+
+    await client.query(
+      `INSERT INTO payments (booking_id, amount, status)
+       VALUES ($1, $2, 'success')`,
       [bookingId, totalAmount]
     );
 
-    const userResult = await client.query(`SELECT name, email FROM users WHERE id = $1`, [userId]);
-    const eventResult = await client.query(`SELECT title, venue, event_time FROM events WHERE id = $1`, [booking.event_id]);
+    const userResult = await client.query(
+      `SELECT name, email FROM users WHERE id = $1`,
+      [userId]
+    );
+
+    const eventResult = await client.query(
+      `SELECT title, venue, event_time FROM events WHERE id = $1`,
+      [booking.event_id]
+    );
+
     const user = userResult.rows[0];
     const eventDetails = eventResult.rows[0];
 
@@ -136,7 +183,10 @@ async function confirmBooking(req, res) {
       await redisClient.del(`seat_lock:${seatId}`);
     }
 
-    req.app.get('io').to(`event:${booking.event_id}`).emit('seats_booked', { seatIds });
+    req.app
+      .get('io')
+      .to(`event:${booking.event_id}`)
+      .emit('seats_booked', { seatIds });
 
     sendBookingConfirmation({
       toEmail: user.email,
@@ -149,11 +199,18 @@ async function confirmBooking(req, res) {
       bookingId,
     });
 
-    return res.status(200).json({ bookingId, status: 'confirmed', amount: totalAmount });
+    return res.status(200).json({
+      bookingId,
+      status: 'confirmed',
+      amount: totalAmount,
+    });
   } catch (err) {
     await client.query('ROLLBACK');
     console.error('confirmBooking error:', err);
-    return res.status(500).json({ error: 'Failed to confirm booking' });
+
+    return res.status(500).json({
+      error: 'Failed to confirm booking',
+    });
   } finally {
     client.release();
   }
@@ -167,6 +224,7 @@ async function cancelBooking(req, res) {
   const userId = req.user.id;
 
   const client = await pool.connect();
+
   try {
     await client.query('BEGIN');
 
@@ -174,25 +232,39 @@ async function cancelBooking(req, res) {
       `SELECT * FROM bookings WHERE id = $1 AND user_id = $2`,
       [bookingId, userId]
     );
+
     const booking = bookingResult.rows[0];
 
     if (!booking) {
       await client.query('ROLLBACK');
-      return res.status(404).json({ error: 'Booking not found' });
+      return res.status(404).json({
+        error: 'Booking not found',
+      });
     }
+
     if (booking.status !== 'pending') {
       await client.query('ROLLBACK');
-      return res.status(400).json({ error: `Cannot cancel a booking that is ${booking.status}` });
+      return res.status(400).json({
+        error: `Cannot cancel a booking that is ${booking.status}`,
+      });
     }
 
     const seatsResult = await client.query(
       `SELECT seat_id FROM booking_seats WHERE booking_id = $1`,
       [bookingId]
     );
+
     const seatIds = seatsResult.rows.map((r) => r.seat_id);
 
-    await client.query(`UPDATE seats SET status = 'available' WHERE id = ANY($1)`, [seatIds]);
-    await client.query(`UPDATE bookings SET status = 'cancelled' WHERE id = $1`, [bookingId]);
+    await client.query(
+      `UPDATE seats SET status = 'available' WHERE id = ANY($1)`,
+      [seatIds]
+    );
+
+    await client.query(
+      `UPDATE bookings SET status = 'cancelled' WHERE id = $1`,
+      [bookingId]
+    );
 
     await client.query('COMMIT');
 
@@ -200,13 +272,22 @@ async function cancelBooking(req, res) {
       await redisClient.del(`seat_lock:${seatId}`);
     }
 
-    req.app.get('io').to(`event:${booking.event_id}`).emit('seats_released', { seatIds });
+    req.app
+      .get('io')
+      .to(`event:${booking.event_id}`)
+      .emit('seats_released', { seatIds });
 
-    return res.status(200).json({ bookingId, status: 'cancelled' });
+    return res.status(200).json({
+      bookingId,
+      status: 'cancelled',
+    });
   } catch (err) {
     await client.query('ROLLBACK');
     console.error('cancelBooking error:', err);
-    return res.status(500).json({ error: 'Failed to cancel booking' });
+
+    return res.status(500).json({
+      error: 'Failed to cancel booking',
+    });
   } finally {
     client.release();
   }
@@ -218,6 +299,7 @@ async function cancelBooking(req, res) {
  */
 async function getMyBookings(req, res) {
   const userId = req.user.id;
+
   try {
     const result = await pool.query(
       `SELECT
@@ -234,10 +316,102 @@ async function getMyBookings(req, res) {
        ORDER BY b.created_at DESC`,
       [userId]
     );
+
     return res.status(200).json(result.rows);
   } catch (err) {
     console.error('getMyBookings error:', err);
-    return res.status(500).json({ error: 'Failed to fetch bookings' });
+
+    return res.status(500).json({
+      error: 'Failed to fetch bookings',
+    });
+  }
+}
+
+/**
+ * AI-powered recommendations: looks at what the user has booked before,
+ * asks Gemini to suggest which upcoming events (from the real catalog)
+ * they'd likely enjoy, and why. Grounded in actual DB data - the model
+ * picks from a provided list rather than inventing events.
+ */
+async function getRecommendations(req, res) {
+  const userId = req.user.id;
+
+  try {
+    const historyResult = await pool.query(
+      `SELECT DISTINCT ON (e.title, e.venue) e.title, e.venue, b.created_at
+       FROM bookings b
+       JOIN events e ON b.event_id = e.id
+       WHERE b.user_id = $1 AND b.status = 'confirmed'
+       ORDER BY e.title, e.venue, b.created_at DESC
+       LIMIT 10`,
+      [userId]
+    );
+
+    // No booking history yet - nothing meaningful to recommend from
+    if (historyResult.rows.length === 0) {
+      return res.status(200).json({
+        recommendations: [],
+      });
+    }
+
+    const upcomingResult = await pool.query(`
+      SELECT id, title, venue, event_time
+      FROM events
+      WHERE event_time > NOW()
+      ORDER BY event_time ASC
+      LIMIT 100
+    `);
+
+    const historyText = historyResult.rows
+      .map((h) => `"${h.title}" at ${h.venue}`)
+      .join(', ');
+
+    const catalogText = upcomingResult.rows
+      .map((e) => `ID ${e.id}: "${e.title}" at ${e.venue}`)
+      .join('\n');
+
+    const model = genAI.getGenerativeModel({
+      model: 'gemini-3.6-flash',
+    });
+
+    const prompt = `A user has previously booked: ${historyText}.
+
+From this catalog of upcoming events, pick up to 4 the user would most likely enjoy, based on similar genre/artist/vibe. Return ONLY a JSON array of event IDs, nothing else, e.g. [3,17,42]. If nothing fits well, return [].
+
+Catalog:
+${catalogText}`;
+
+    const result = await model.generateContent(prompt);
+
+    const raw = result.response
+      .text()
+      .replace(/```json|```/g, '')
+      .trim();
+
+    const recommendedIds = JSON.parse(raw);
+
+    if (
+      !Array.isArray(recommendedIds) ||
+      recommendedIds.length === 0
+    ) {
+      return res.status(200).json({
+        recommendations: [],
+      });
+    }
+
+    const recommended = upcomingResult.rows.filter((e) =>
+      recommendedIds.includes(e.id)
+    );
+
+    return res.status(200).json({
+      recommendations: recommended,
+    });
+  } catch (err) {
+    console.error('getRecommendations error:', err);
+
+    return res.status(200).json({
+      recommendations: [],
+    });
   }
 }
 
@@ -246,10 +420,18 @@ async function releaseLocks(seatIds, lockToken) {
   for (const seatId of seatIds) {
     const lockKey = `seat_lock:${seatId}`;
     const currentValue = await redisClient.get(lockKey);
+
     if (currentValue === lockToken) {
       await redisClient.del(lockKey);
     }
   }
 }
 
-module.exports = { holdSeats, releaseLocks, confirmBooking, cancelBooking, getMyBookings };
+module.exports = {
+  holdSeats,
+  releaseLocks,
+  confirmBooking,
+  cancelBooking,
+  getMyBookings,
+  getRecommendations,
+};

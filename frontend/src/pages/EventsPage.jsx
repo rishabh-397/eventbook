@@ -12,6 +12,7 @@ export default function EventsPage() {
 
   const [aiMode, setAiMode] = useState(false);
   const [aiSearching, setAiSearching] = useState(false);
+  const [recommendations, setRecommendations] = useState([]);
 
   useEffect(() => {
     if (aiMode) return; // AI search is triggered manually via the button, not on every keystroke
@@ -26,6 +27,12 @@ export default function EventsPage() {
 
     return () => clearTimeout(timer);
   }, [search, aiMode]);
+
+  useEffect(() => {
+    api.get('/bookings/recommendations')
+      .then((res) => setRecommendations(res.data.recommendations))
+      .catch(() => setRecommendations([]));
+  }, []);
 
   async function handleAiSearch(e) {
     e.preventDefault();
@@ -49,7 +56,8 @@ export default function EventsPage() {
     navigate('/');
   }
 
-  const isAdmin = JSON.parse(localStorage.getItem('user') || '{}').role === 'admin';
+  const isAdmin =
+    JSON.parse(localStorage.getItem('user') || '{}').role === 'admin';
 
   return (
     <div style={styles.page}>
@@ -100,6 +108,39 @@ export default function EventsPage() {
           </button>
         </div>
       </header>
+
+      {recommendations.length > 0 && (
+        <>
+          <p style={styles.eyebrow}>✨ Recommended For You</p>
+
+          <div style={{ ...styles.grid, marginBottom: 40 }}>
+            {recommendations.map((ev) => (
+              <div
+                key={ev.id}
+                style={{
+                  ...styles.card,
+                  border: '1px solid var(--gold)',
+                }}
+                onClick={() => navigate(`/events/${ev.id}`)}
+              >
+                <p style={styles.cardEyebrow}>
+                  {new Date(ev.event_time).toLocaleDateString(undefined, {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric',
+                  })}
+                </p>
+
+                <h2 style={styles.cardTitle}>{ev.title}</h2>
+
+                <p style={styles.cardVenue}>{ev.venue}</p>
+
+                <p style={styles.cardCta}>View Seats →</p>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
 
       <p style={styles.eyebrow}>Now Booking</p>
 
