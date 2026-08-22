@@ -38,14 +38,32 @@ ${eventsContext}
 
 User question: ${message}`;
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-3.6-flash' });
-    const result = await model.generateContent(prompt);
-    const reply = result.response.text();
+        const model = genAI.getGenerativeModel({ model: 'gemini-3.6-flash' });
+    const reply = await generateWithRetry(model, prompt);
 
     return res.status(200).json({ reply });
   } catch (err) {
     console.error('chatWithAssistant error:', err);
     return res.status(500).json({ error: 'Failed to get assistant response' });
+  }
+}
+
+/**
+ * Retries transient failures (like Gemini's 503 "high demand" errors)
+ * with a short exponential backoff, instead of failing the user's
+ * request on the first temporary blip from the upstream API.
+ */
+async function generateWithRetry(model, prompt, attempts = 3) {
+  for (let i = 0; i < attempts; i++) {
+    try {
+      const result = await model.generateContent(prompt);
+      return result.response.text();
+    } catch (err) {
+      const isLastAttempt = i === attempts - 1;
+      const isRetryable = err.status === 503 || err.status === 429;
+      if (isLastAttempt || !isRetryable) throw err;
+      await new Promise((resolve) => setTimeout(resolve, 500 * (i + 1)));
+    }
   }
 }
 
