@@ -1,9 +1,9 @@
 const pool = require('../config/db');
-const anthropic = require('../config/ai');
+const genAI = require('../config/ai');
 
 /**
  * AI Chatbot — RAG-lite pattern: fetch relevant events from Postgres,
- * inject them as context into the prompt, let Claude answer using only
+ * inject them as context into the prompt, let Gemini answer using only
  * that real data. This avoids the model hallucinating events that don't
  * exist, since it's grounded in an actual DB query result.
  */
@@ -15,10 +15,6 @@ async function chatWithAssistant(req, res) {
   }
 
   try {
-    // Pull a reasonable slice of upcoming events as context.
-    // For a larger catalog, this would ideally be a smarter retrieval
-    // step (e.g. embedding search), but a recent/broad slice works well
-    // enough here since Claude can reason over structured text directly.
     const eventsResult = await pool.query(`
       SELECT title, venue, event_time,
         (SELECT MIN(price) FROM seats WHERE seats.event_id = events.id) AS min_price,
@@ -35,19 +31,16 @@ async function chatWithAssistant(req, res) {
       )
       .join('\n');
 
-    const systemPrompt = `You are EventBook's helpful booking assistant. Answer questions about events using ONLY the event data provided below. If asked about something not in this list, say you don't have that information. Keep answers concise and friendly. Recommend specific events by name when relevant.
+    const prompt = `You are EventBook's helpful booking assistant. Answer questions about events using ONLY the event data provided below. If asked about something not in this list, say you don't have that information. Keep answers concise and friendly. Recommend specific events by name when relevant.
 
 Available events:
-${eventsContext}`;
+${eventsContext}
 
-    const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-5',
-      max_tokens: 500,
-      system: systemPrompt,
-      messages: [{ role: 'user', content: message }],
-    });
+User question: ${message}`;
 
-    const reply = response.content[0].text;
+    const model = genAI.getGenerativeModel({ model: 'gemini-3.6-flash' });
+    const result = await model.generateContent(prompt);
+    const reply = result.response.text();
 
     return res.status(200).json({ reply });
   } catch (err) {
