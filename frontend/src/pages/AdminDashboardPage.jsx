@@ -9,7 +9,7 @@ export default function AdminDashboardPage() {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({
     title: '', description: '', venue: '', eventTime: '',
-    seatRows: 5, seatsPerRow: 10, price: 1000,
+    seatRows: 5, seatsPerRow: 10, price: 1000, latitude: '', longitude: '',
   });
   const [error, setError] = useState('');
   const [creating, setCreating] = useState(false);
@@ -37,9 +37,11 @@ export default function AdminDashboardPage() {
         seatRows: Number(form.seatRows),
         seatsPerRow: Number(form.seatsPerRow),
         price: Number(form.price),
+        latitude: form.latitude ? Number(form.latitude) : null,
+        longitude: form.longitude ? Number(form.longitude) : null,
       });
       setShowForm(false);
-      setForm({ title: '', description: '', venue: '', eventTime: '', seatRows: 5, seatsPerRow: 10, price: 1000 });
+      setForm({ title: '', description: '', venue: '', eventTime: '', seatRows: 5, seatsPerRow: 10, price: 1000, latitude: '', longitude: '' });
       loadSummary();
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to create event');
@@ -105,6 +107,15 @@ export default function AdminDashboardPage() {
             <input style={styles.input} type="number" placeholder="Seats per row" value={form.seatsPerRow}
               onChange={(e) => setForm({ ...form, seatsPerRow: e.target.value })} required />
           </div>
+          <div style={styles.formRow}>
+            <input style={styles.input} type="number" step="any" placeholder="Latitude (optional, e.g. 19.0760)" value={form.latitude}
+              onChange={(e) => setForm({ ...form, latitude: e.target.value })} />
+            <input style={styles.input} type="number" step="any" placeholder="Longitude (optional, e.g. 72.8777)" value={form.longitude}
+              onChange={(e) => setForm({ ...form, longitude: e.target.value })} />
+          </div>
+          <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>
+            Tip: search the venue on Google Maps, right-click the pin, and copy the coordinates shown.
+          </p>
           {error && <p style={styles.error}>{error}</p>}
           <button type="submit" style={styles.submitBtn} disabled={creating}>
             {creating ? 'Creating…' : 'Create Event'}

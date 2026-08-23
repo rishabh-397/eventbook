@@ -2,7 +2,7 @@ const pool = require('../config/db');
 const genAI = require('../config/ai');
 
 async function createEvent(req, res) {
-  const { title, description, venue, eventTime, seatRows, seatsPerRow, price } = req.body;
+  const { title, description, venue, eventTime, seatRows, seatsPerRow, price, latitude, longitude } = req.body;
 
   if (!title || !eventTime || !seatRows || !seatsPerRow || !price) {
     return res.status(400).json({ error: 'title, eventTime, seatRows, seatsPerRow, and price are required' });
@@ -13,9 +13,9 @@ async function createEvent(req, res) {
     await client.query('BEGIN');
 
     const eventResult = await client.query(
-      `INSERT INTO events (title, description, venue, event_time, created_by)
-       VALUES ($1, $2, $3, $4, $5) RETURNING id`,
-      [title, description, venue, eventTime, req.user.id]
+      `INSERT INTO events (title, description, venue, event_time, latitude, longitude, created_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+      [title, description, venue, eventTime, latitude || null, longitude || null, req.user.id]
     );
 
     const eventId = eventResult.rows[0].id;

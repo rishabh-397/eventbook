@@ -131,6 +131,26 @@ export default function SeatMapPage() {
         )}
       </div>
 
+      {event.latitude && event.longitude && (
+        <div style={{ marginBottom: 32 }}>
+          <iframe
+            title="event-location"
+            width="100%"
+            height="220"
+            style={{ border: '1px solid var(--border)', borderRadius: 6 }}
+            loading="lazy"
+            src={`https://maps.google.com/maps?q=${event.latitude},${event.longitude}&z=15&output=embed`}
+          />
+          <a
+            href={`https://www.google.com/maps/dir/?api=1&destination=${event.latitude},${event.longitude}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ display: 'inline-block', marginTop: 8, color: 'var(--gold)', fontSize: 13 }}
+          >
+            📍 Get Directions →
+          </a>
+        </div>
+      )}
       <div style={styles.legend}>
         <span style={styles.legendItem}><i style={{ ...styles.dot, background: 'var(--seat-available)' }} /> Available</span>
         <span style={styles.legendItem}><i style={{ ...styles.dot, background: 'var(--seat-held)' }} /> Held/Booked</span>
