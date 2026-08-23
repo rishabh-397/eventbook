@@ -5,6 +5,7 @@ import SeatMapPage from './pages/SeatMapPage';
 import MyBookingsPage from './pages/MyBookingsPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
 import ChatWidget from './components/ChatWidget';
+import Navbar from './components/Navbar';
 
 function ProtectedRoute({ children }) {
   const token = localStorage.getItem('token');
@@ -14,42 +15,47 @@ function ProtectedRoute({ children }) {
 export default function App() {
   return (
     <BrowserRouter>
-      <ChatWidget />
-      <Routes>
-        <Route path="/" element={<AuthPage />} />
-        <Route
-          path="/events"
-          element={
-            <ProtectedRoute>
-              <EventsPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/events/:id"
-          element={
-            <ProtectedRoute>
-              <SeatMapPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/my-bookings"
-          element={
-            <ProtectedRoute>
-              <MyBookingsPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin"
-          element={
-            <ProtectedRoute>
-              <AdminDashboardPage />
-            </ProtectedRoute>
-          }
-        />
-      </Routes>
+      <div className="min-h-screen bg-[#0B0E14] text-[#EDEAE3] font-body flex flex-col relative overflow-hidden">
+        <Navbar />
+        <ChatWidget />
+        <main className="flex-1 w-full relative z-10">
+          <Routes>
+            <Route path="/" element={<AuthPage />} />
+            <Route
+              path="/events"
+              element={
+                <ProtectedRoute>
+                  <EventsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/events/:id"
+              element={
+                <ProtectedRoute>
+                  <SeatMapPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/my-bookings"
+              element={
+                <ProtectedRoute>
+                  <MyBookingsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin"
+              element={
+                <ProtectedRoute>
+                  <AdminDashboardPage />
+                </ProtectedRoute>
+              }
+            />
+          </Routes>
+        </main>
+      </div>
     </BrowserRouter>
   );
 }

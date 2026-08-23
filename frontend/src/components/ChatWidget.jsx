@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import api from '../api/client';
+import { motion, AnimatePresence } from 'framer-motion';
+import { MessageSquare, X, Send, Bot, User } from 'lucide-react';
 
 export default function ChatWidget() {
   const [open, setOpen] = useState(false);
@@ -14,11 +16,13 @@ export default function ChatWidget() {
   const scrollRef = useRef(null);
 
   useEffect(() => {
-    scrollRef.current?.scrollTo({
-      top: scrollRef.current.scrollHeight,
-      behavior: 'smooth',
-    });
-  }, [messages]);
+    if (scrollRef.current) {
+      scrollRef.current.scrollTo({
+        top: scrollRef.current.scrollHeight,
+        behavior: 'smooth',
+      });
+    }
+  }, [messages, loading, open]);
 
   async function sendMessage(e) {
     e.preventDefault();
@@ -86,171 +90,133 @@ export default function ChatWidget() {
     }
   }
 
+  const TypingIndicator = () => (
+    <div className="flex gap-1 items-center px-1 py-2">
+      <motion.div className="w-1.5 h-1.5 bg-[#8B93A7] rounded-full" animate={{ y: [0, -5, 0] }} transition={{ duration: 0.6, repeat: Infinity, delay: 0 }} />
+      <motion.div className="w-1.5 h-1.5 bg-[#8B93A7] rounded-full" animate={{ y: [0, -5, 0] }} transition={{ duration: 0.6, repeat: Infinity, delay: 0.2 }} />
+      <motion.div className="w-1.5 h-1.5 bg-[#8B93A7] rounded-full" animate={{ y: [0, -5, 0] }} transition={{ duration: 0.6, repeat: Infinity, delay: 0.4 }} />
+    </div>
+  );
+
   return (
-    <>
-      <button
-        style={styles.bubble}
+    <div className="fixed bottom-6 right-6 z-50 font-body">
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: 20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.95 }}
+            transition={{ type: "spring", stiffness: 300, damping: 25 }}
+            className="absolute bottom-20 right-0 w-[350px] sm:w-[380px] h-[500px] glass-card flex flex-col overflow-hidden shadow-2xl border-[#E8B563]/20"
+          >
+            {/* Header */}
+            <div className="bg-gradient-to-r from-[#E8B563] to-[#F0C57B] px-5 py-4 flex items-center justify-between shadow-md relative z-10">
+              <div className="flex items-center gap-3 text-[#0B0E14]">
+                <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm">
+                  <Bot size={18} />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm">EventBook Assistant</h3>
+                  <p className="text-xs opacity-80 font-medium">AI-powered recommendations</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setOpen(false)}
+                className="text-[#0B0E14] hover:bg-white/20 p-1.5 rounded-full transition-colors"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Messages */}
+            <div 
+              className="flex-1 overflow-y-auto p-5 flex flex-col gap-4 bg-[#0B0E14]/60 backdrop-blur-md hide-scrollbar"
+              ref={scrollRef}
+            >
+              {messages.map((m, i) => (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  key={i}
+                  className={`flex gap-3 max-w-[85%] ${m.role === 'user' ? 'self-end flex-row-reverse' : 'self-start'}`}
+                >
+                  <div className={`w-6 h-6 rounded-full shrink-0 flex items-center justify-center text-[10px] ${m.role === 'user' ? 'bg-[#E8B563]/20 text-[#E8B563]' : 'bg-[#232838] text-white'}`}>
+                    {m.role === 'user' ? <User size={12} /> : <Bot size={12} />}
+                  </div>
+                  <div 
+                    className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed shadow-sm ${
+                      m.role === 'user' 
+                        ? 'bg-[#E8B563] text-[#0B0E14] rounded-tr-sm' 
+                        : 'bg-[#1A1F2E] text-[#EDEAE3] border border-[#232838] rounded-tl-sm'
+                    }`}
+                  >
+                    {m.text}
+                  </div>
+                </motion.div>
+              ))}
+
+              {loading && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="flex gap-3 max-w-[85%] self-start"
+                >
+                  <div className="w-6 h-6 rounded-full shrink-0 flex items-center justify-center bg-[#232838] text-white">
+                    <Bot size={12} />
+                  </div>
+                  <div className="px-4 py-2.5 rounded-2xl bg-[#1A1F2E] border border-[#232838] rounded-tl-sm">
+                    <TypingIndicator />
+                  </div>
+                </motion.div>
+              )}
+            </div>
+
+            {/* Input */}
+            <form onSubmit={sendMessage} className="p-3 bg-[#12161F] border-t border-[#232838] flex items-end gap-2">
+              <input
+                className="flex-1 bg-[#0B0E14] border border-[#232838] rounded-xl px-4 py-3 text-sm text-white placeholder:text-[#8B93A7] focus:outline-none focus:border-[#E8B563] transition-colors"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="Ask something..."
+                disabled={loading}
+              />
+              <button
+                type="submit"
+                disabled={loading || !input.trim()}
+                className="shrink-0 w-11 h-11 bg-[#E8B563] text-[#0B0E14] rounded-xl flex items-center justify-center hover:bg-[#F0C57B] transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_0_10px_rgba(232,181,99,0.2)]"
+              >
+                <Send size={18} className="ml-1" />
+              </button>
+            </form>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <motion.button
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
+        className="w-14 h-14 bg-gradient-to-br from-[#E8B563] to-[#F0C57B] rounded-full flex items-center justify-center text-[#0B0E14] shadow-[0_4px_20px_rgba(232,181,99,0.4)] border-2 border-white/20 relative"
         onClick={() => setOpen(!open)}
       >
-        {open ? '✕' : '💬'}
-      </button>
-
-      {open && (
-        <div style={styles.panel}>
-          <div style={styles.header}>
-            <p style={styles.headerText}>
-              EventBook Assistant
-            </p>
+        <AnimatePresence mode="wait">
+          {open ? (
+            <motion.div key="close" initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: 90, opacity: 0 }}>
+              <X size={24} />
+            </motion.div>
+          ) : (
+            <motion.div key="chat" initial={{ rotate: 90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: -90, opacity: 0 }}>
+              <MessageSquare size={24} />
+            </motion.div>
+          )}
+        </AnimatePresence>
+        
+        {/* Unread indicator pulse */}
+        {!open && (
+          <div className="absolute top-0 right-0 w-3 h-3 bg-[#C1443D] rounded-full border-2 border-[#0B0E14] shadow-sm">
+            <div className="w-full h-full rounded-full bg-[#C1443D] animate-ping opacity-75"></div>
           </div>
-
-          <div
-            style={styles.messages}
-            ref={scrollRef}
-          >
-            {messages.map((m, i) => (
-              <div
-                key={i}
-                style={{
-                  ...styles.message,
-                  alignSelf:
-                    m.role === 'user'
-                      ? 'flex-end'
-                      : 'flex-start',
-                  background:
-                    m.role === 'user'
-                      ? 'var(--gold)'
-                      : 'var(--bg)',
-                  color:
-                    m.role === 'user'
-                      ? '#0B0E14'
-                      : 'var(--text)',
-                }}
-              >
-                {m.text}
-              </div>
-            ))}
-
-            {loading && (
-              <div
-                style={{
-                  ...styles.message,
-                  background: 'var(--bg)',
-                  color: 'var(--text-muted)',
-                }}
-              >
-                Thinking…
-              </div>
-            )}
-          </div>
-
-          <form
-            onSubmit={sendMessage}
-            style={styles.inputRow}
-          >
-            <input
-              style={styles.input}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask about events…"
-              disabled={loading}
-            />
-
-            <button
-              type="submit"
-              style={styles.sendBtn}
-              disabled={loading}
-            >
-              →
-            </button>
-          </form>
-        </div>
-      )}
-    </>
+        )}
+      </motion.button>
+    </div>
   );
 }
-
-const styles = {
-  bubble: {
-    position: 'fixed',
-    bottom: 24,
-    right: 24,
-    width: 56,
-    height: 56,
-    borderRadius: '50%',
-    background: 'var(--gold)',
-    border: 'none',
-    fontSize: 22,
-    cursor: 'pointer',
-    zIndex: 200,
-    boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-  },
-
-  panel: {
-    position: 'fixed',
-    bottom: 92,
-    right: 24,
-    width: 340,
-    height: 460,
-    background: 'var(--bg-elevated)',
-    border: '1px solid var(--border)',
-    borderRadius: 8,
-    display: 'flex',
-    flexDirection: 'column',
-    zIndex: 200,
-    overflow: 'hidden',
-    boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
-  },
-
-  header: {
-    padding: '14px 16px',
-    borderBottom: '1px solid var(--border)',
-  },
-
-  headerText: {
-    margin: 0,
-    fontSize: 14,
-    fontWeight: 600,
-    color: 'var(--gold)',
-  },
-
-  messages: {
-    flex: 1,
-    overflowY: 'auto',
-    padding: 16,
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 10,
-  },
-
-  message: {
-    maxWidth: '85%',
-    padding: '10px 12px',
-    borderRadius: 8,
-    fontSize: 13,
-    lineHeight: 1.4,
-  },
-
-  inputRow: {
-    display: 'flex',
-    borderTop: '1px solid var(--border)',
-  },
-
-  input: {
-    flex: 1,
-    padding: '12px 14px',
-    background: 'transparent',
-    border: 'none',
-    color: 'var(--text)',
-    fontSize: 13,
-    outline: 'none',
-  },
-
-  sendBtn: {
-    padding: '0 18px',
-    background: 'var(--gold)',
-    border: 'none',
-    color: '#0B0E14',
-    fontWeight: 700,
-    cursor: 'pointer',
-  },
-};

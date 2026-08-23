@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/client';
+import { motion, AnimatePresence } from 'framer-motion';
 import StarfieldBackground from '../components/StarfieldBackground';
 import Logo from '../components/Logo';
+import { ArrowRight, Mail, Lock, User } from 'lucide-react';
 
 export default function AuthPage() {
   const [mode, setMode] = useState('login');
@@ -32,137 +34,129 @@ export default function AuthPage() {
   }
 
   return (
-    <div style={styles.page}>
+    <div className="min-h-screen flex items-center justify-center bg-[#0B0E14] relative overflow-hidden px-4">
       <StarfieldBackground />
-      <div style={{ ...styles.card, position: 'relative', zIndex: 1 }}>
-        <p style={styles.eyebrow}>Admit One</p>
-        <div style={{ margin: '4px 0 24px' }}>
-          <Logo size={36} textSize={28} />
-        </div>
+      
+      {/* Animated Gradient Blobs */}
+      <div className="blob blob-1"></div>
+      <div className="blob blob-2"></div>
 
-        <div style={styles.tabs}>
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, ease: "easeOut" }}
+        className="glass-card w-full max-w-[420px] p-8 md:p-10 relative z-10"
+      >
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.2 }}
+          className="mb-8 flex flex-col items-center text-center"
+        >
+          <div className="inline-block mb-6 animate-float">
+            <Logo size={48} textSize={32} />
+          </div>
+          <p className="font-mono text-[#E8B563] text-xs tracking-[0.2em] uppercase mb-2">Welcome to EventBook</p>
+          <h1 className="text-2xl md:text-3xl font-display font-semibold text-white">
+            {mode === 'login' ? 'Sign In to Continue' : 'Create an Account'}
+          </h1>
+        </motion.div>
+
+        <div className="flex p-1 bg-[#0B0E14]/50 rounded-lg mb-8 border border-[#232838]">
           <button
-            style={mode === 'login' ? styles.tabActive : styles.tab}
-            onClick={() => setMode('login')}
+            className={`flex-1 py-2.5 text-sm font-medium rounded-md transition-all duration-300 ${mode === 'login' ? 'bg-[#E8B563] text-[#0B0E14] shadow-md' : 'text-[#8B93A7] hover:text-white'}`}
+            onClick={() => { setMode('login'); setError(''); }}
+            type="button"
           >
             Log In
           </button>
           <button
-            style={mode === 'signup' ? styles.tabActive : styles.tab}
-            onClick={() => setMode('signup')}
+            className={`flex-1 py-2.5 text-sm font-medium rounded-md transition-all duration-300 ${mode === 'signup' ? 'bg-[#E8B563] text-[#0B0E14] shadow-md' : 'text-[#8B93A7] hover:text-white'}`}
+            onClick={() => { setMode('signup'); setError(''); }}
+            type="button"
           >
             Sign Up
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} style={styles.form}>
-          {mode === 'signup' && (
+        <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+          <AnimatePresence mode="popLayout">
+            {mode === 'signup' && (
+              <motion.div
+                initial={{ opacity: 0, height: 0, y: -10 }}
+                animate={{ opacity: 1, height: 'auto', y: 0 }}
+                exit={{ opacity: 0, height: 0, y: -10 }}
+                transition={{ duration: 0.3 }}
+                className="relative"
+              >
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                  <User size={18} className="text-[#8B93A7]" />
+                </div>
+                <input
+                  className="input-base pl-11"
+                  placeholder="Full Name"
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  required
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+              <Mail size={18} className="text-[#8B93A7]" />
+            </div>
             <input
-              style={styles.input}
-              placeholder="Name"
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              className="input-base pl-11"
+              type="email"
+              placeholder="Email Address"
+              value={form.email}
+              onChange={(e) => setForm({ ...form, email: e.target.value })}
               required
             />
-          )}
-          <input
-            style={styles.input}
-            type="email"
-            placeholder="Email"
-            value={form.email}
-            onChange={(e) => setForm({ ...form, email: e.target.value })}
-            required
-          />
-          <input
-            style={styles.input}
-            type="password"
-            placeholder="Password"
-            value={form.password}
-            onChange={(e) => setForm({ ...form, password: e.target.value })}
-            required
-          />
+          </div>
 
-          {error && <p style={styles.error}>{error}</p>}
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+              <Lock size={18} className="text-[#8B93A7]" />
+            </div>
+            <input
+              className="input-base pl-11"
+              type="password"
+              placeholder="Password"
+              value={form.password}
+              onChange={(e) => setForm({ ...form, password: e.target.value })}
+              required
+            />
+          </div>
 
-          <button type="submit" style={styles.submit} disabled={loading}>
-            {loading ? 'Please wait…' : mode === 'login' ? 'Log In' : 'Create Account'}
+          <AnimatePresence>
+            {error && (
+              <motion.p 
+                initial={{ opacity: 0, y: -5 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                className="text-[#C1443D] text-sm font-medium bg-[#C1443D]/10 p-3 rounded-lg border border-[#C1443D]/20"
+              >
+                {error}
+              </motion.p>
+            )}
+          </AnimatePresence>
+
+          <button 
+            type="submit" 
+            className="btn-primary mt-2 flex items-center justify-center gap-2 group relative overflow-hidden" 
+            disabled={loading}
+          >
+            <span className="relative z-10 flex items-center gap-2">
+              {loading ? 'Please wait...' : mode === 'login' ? 'Log In' : 'Create Account'}
+              {!loading && <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />}
+            </span>
+            {loading && <div className="absolute inset-0 shimmer opacity-50"></div>}
           </button>
         </form>
-      </div>
+      </motion.div>
     </div>
   );
 }
-
-const styles = {
-  page: {
-    minHeight: '100vh',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    background: 'var(--bg)',
-    position: 'relative',
-    overflow: 'hidden',
-  },
-  card: {
-    width: 380,
-    padding: '40px 32px',
-    background: 'rgba(18, 22, 31, 0.85)',
-    backdropFilter: 'blur(8px)',
-    border: '1px solid var(--border)',
-    borderRadius: 4,
-  },
-  eyebrow: {
-    color: 'var(--gold)',
-    fontFamily: 'var(--font-mono)',
-    fontSize: 12,
-    letterSpacing: '0.15em',
-    textTransform: 'uppercase',
-    margin: 0,
-  },
-  title: {
-    fontSize: 32,
-    margin: '4px 0 24px',
-  },
-  tabs: { display: 'flex', gap: 8, marginBottom: 24 },
-  tab: {
-    flex: 1,
-    padding: '10px 0',
-    background: 'transparent',
-    border: '1px solid var(--border)',
-    color: 'var(--text-muted)',
-    borderRadius: 4,
-  },
-  tabActive: {
-    flex: 1,
-    padding: '10px 0',
-    background: 'var(--gold)',
-    border: '1px solid var(--gold)',
-    color: '#0B0E14',
-    fontWeight: 600,
-    borderRadius: 4,
-  },
-  form: { display: 'flex', flexDirection: 'column', gap: 12 },
-  input: {
-    padding: '12px 14px',
-    background: 'var(--bg)',
-    border: '1px solid var(--border)',
-    borderRadius: 4,
-    color: 'var(--text)',
-    fontSize: 14,
-  },
-  submit: {
-    marginTop: 8,
-    padding: '12px 0',
-    background: 'var(--gold)',
-    border: 'none',
-    borderRadius: 4,
-    color: '#0B0E14',
-    fontWeight: 600,
-    fontSize: 14,
-  },
-  error: {
-    color: 'var(--seat-held)',
-    fontSize: 13,
-    margin: 0,
-  },
-};
