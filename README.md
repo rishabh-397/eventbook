@@ -2,7 +2,8 @@
 
 A full-stack ticket booking platform built to demonstrate real concurrency
 handling (zero double-booking under simultaneous requests), real-time seat
-updates, and production-style backend design — not just a CRUD app.
+updates, AI-powered features, and production-style backend design — not
+just a CRUD app.
 
 ## Live Demo
 - **App:** https://eventbook-pi.vercel.app
@@ -12,9 +13,11 @@ updates, and production-style backend design — not just a CRUD app.
 _Note: the backend is hosted on Render's free tier, which spins down after inactivity — the first request after idle time may take 30-60s to wake up._
 
 ## Stack
-React · Node.js/Express · PostgreSQL (Neon) · Redis (Upstash) · Socket.io · k6
+React · Node.js/Express · PostgreSQL (Neon) · Redis (Upstash) · Socket.io · Google Gemini API · k6
 
 ## Features
+
+### Core
 - **Auth** — JWT-based signup/login, admin role support
 - **Event browsing** — search/filter by title or venue, seats-remaining urgency indicators
 - **Seat map** — curved venue-style layout with live availability, real-time updates via Socket.io
@@ -22,25 +25,37 @@ React · Node.js/Express · PostgreSQL (Neon) · Redis (Upstash) · Socket.io ·
 - **Concurrency-safe locking** — Redis distributed locks prevent double-booking, even under simultaneous requests (see Load Testing below)
 - **My Bookings** — booking history per user
 - **Admin dashboard** — create events, view booking/revenue stats per event
+
+### AI-Powered (Google Gemini)
+- **AI Chatbot Assistant** — answers questions about events, grounded in real event data (RAG-lite pattern: DB query results injected as context, not hallucinated)
+- **Natural Language Search** — free-text queries like "comedy shows under 1000 in Delhi" parsed into structured SQL filters by the LLM
+- **AI Recommendations** — "Recommended For You" section suggests upcoming events based on a user's booking history
+
+### Advanced
+- **Dynamic pricing** — seat prices rise automatically as an event fills up (0-50% booked: base price, 50-80%: 1.2x, 80-95%: 1.5x, 95%+: 2x), calculated live from real-time availability
+- **Event location maps** — embedded Google Maps per event with a "Get Directions" link
 - **Live viewer presence** — "🔥 X viewing now" indicator per event, powered by Socket.io connection tracking
 - **Theming** — user-selectable accent color, persisted in localStorage
 - **Auto-expiry** — background cron job releases unpaid holds after 5 minutes
+- **Toast notifications** — non-blocking error/success feedback
 
 ## Local Setup
 
 1. Backend:
 
 cd backend
-cp .env.example .env   # fill in your DATABASE_URL, REDIS_URL, JWT_SECRET, BREVO_API_KEY, BREVO_SENDER_EMAIL
+cp .env.example .env # fill in DATABASE_URL, REDIS_URL, JWT_SECRET, BREVO_API_KEY, BREVO_SENDER_EMAIL, GEMINI_API_KEY
 npm install
-psql $DATABASE_URL -f src/config/schema.sql   # create tables
+psql $DATABASE_URL -f src/config/schema.sql # create tables
 npm run dev
 
 
 2. Frontend:
+
 cd frontend
 npm install
 npm run dev
+
 
 3. Open `http://localhost:5173`
 
@@ -87,6 +102,14 @@ under full concurrent load.
 - **Email via Brevo's HTTP API** instead of SMTP — cloud hosts like
   Render's free tier commonly block outbound SMTP ports, so an HTTP-based
   provider was used for reliable delivery to any recipient.
+- **AI features are grounded, not free-floating** — the chatbot, search,
+  and recommendations all inject real database query results into the
+  prompt, so the model works from actual event data rather than
+  hallucinating events that don't exist.
+- **Dynamic pricing is display-time only** — the multiplier is computed
+  live from current seat availability, but a seat's charged price is
+  locked in from the DB at hold time, keeping the payment flow simple
+  and consistent even as the multiplier changes for other browsers.
 
 ## Deployment
 - **Backend:** Render (Node/Express web service)
@@ -94,4 +117,4 @@ under full concurrent load.
 - **Database:** Neon (serverless PostgreSQL)
 - **Cache/Locking:** Upstash (serverless Redis)
 - **Email:** Brevo (transactional email API)
-
+- **AI:** Google Gemini API
