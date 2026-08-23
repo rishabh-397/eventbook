@@ -371,7 +371,7 @@ async function getRecommendations(req, res) {
       .join('\n');
 
     const model = genAI.getGenerativeModel({
-      model: 'gemini-1.5-flash',
+      model: 'gemini-3.6-flash',
     });
 
     const prompt = `A user has previously booked: ${historyText}.

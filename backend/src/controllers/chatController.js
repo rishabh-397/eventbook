@@ -38,7 +38,7 @@ ${eventsContext}
 
 User question: ${message}`;
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-3.6-flash' });
     const reply = await generateWithRetry(model, prompt);
 
     return res.status(200).json({ reply });
