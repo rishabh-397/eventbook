@@ -63,7 +63,9 @@ async function generateWithRetry(model, prompt, attempts = 3) {
       return result.response.text();
     } catch (err) {
       const isLastAttempt = i === attempts - 1;
-      const isRetryable = err.status === 503 || err.status === 429;
+      // 503 is a temporary service issue, safe to quickly retry.
+      // 429 usually means a strict quota hit requiring a 30s+ wait, so we fail fast.
+      const isRetryable = err.status === 503;
       if (isLastAttempt || !isRetryable) throw err;
       await new Promise((resolve) => setTimeout(resolve, 500 * (i + 1)));
     }
