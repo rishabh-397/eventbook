@@ -18,6 +18,7 @@ export default function SeatMapPage() {
   const [status, setStatus] = useState('');
   const [showPayment, setShowPayment] = useState(false);
   const [viewerCount, setViewerCount] = useState(0);
+  const [pricing, setPricing] = useState(null);
 
   useEffect(() => {
     loadEvent();
@@ -40,6 +41,7 @@ export default function SeatMapPage() {
     api.get(`/events/${id}`).then((res) => {
       setEvent(res.data.event);
       setSeats(res.data.seats);
+      setPricing(res.data.pricing);
     });
   }
 
@@ -120,6 +122,11 @@ export default function SeatMapPage() {
         {viewerCount > 0 && (
           <span style={styles.liveIndicator}>
             🔥 {viewerCount} viewing now
+          </span>
+        )}
+        {pricing && pricing.multiplier > 1 && (
+          <span style={styles.surgeIndicator}>
+            📈 Prices up {Math.round((pricing.multiplier - 1) * 100)}% — {pricing.percentBooked}% sold
           </span>
         )}
       </div>
@@ -240,6 +247,10 @@ const styles = {
     fontSize: 12, color: 'var(--seat-held)', fontFamily: 'var(--font-mono)',
     border: '1px solid var(--seat-held)', padding: '4px 10px', borderRadius: 20,
     animation: 'pulse 2s infinite',
+  },
+  surgeIndicator: {
+    fontSize: 12, color: 'var(--gold)', fontFamily: 'var(--font-mono)',
+    border: '1px solid var(--gold)', padding: '4px 10px', borderRadius: 20,
   },
   legend: { display: 'flex', gap: 20, marginBottom: 32 },
   legendItem: { display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-muted)' },

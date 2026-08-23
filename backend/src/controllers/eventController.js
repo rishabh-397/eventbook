@@ -169,37 +169,53 @@ Examples:
   }
 }
 
+/**
+ * Dynamic pricing: as an event fills up, remaining seats' displayed price
+ * rises via a multiplier based on the current booked percentage. The base
+ * price in the DB never changes - this is calculated live on each read,
+ * so it's always consistent with real-time seat availability.
+ */
+function getDynamicMultiplier(percentBooked) {
+  if (percentBooked >= 0.95) return 2.0;
+  if (percentBooked >= 0.8) return 1.5;
+  if (percentBooked >= 0.5) return 1.2;
+  return 1.0;
+}
+
 async function getEventWithSeats(req, res) {
   const { id } = req.params;
-
   try {
-    const eventResult = await pool.query(
-      'SELECT * FROM events WHERE id = $1',
-      [id]
-    );
-
+    const eventResult = await pool.query('SELECT * FROM events WHERE id = $1', [id]);
     if (eventResult.rows.length === 0) {
       return res.status(404).json({ error: 'Event not found' });
     }
 
     const seatsResult = await pool.query(
-      `SELECT id, seat_number, price, status
-       FROM seats
-       WHERE event_id = $1
-       ORDER BY seat_number`,
+      `SELECT id, seat_number, price, status FROM seats WHERE event_id = $1 ORDER BY seat_number`,
       [id]
     );
 
+    const totalSeats = seatsResult.rows.length;
+    const bookedSeats = seatsResult.rows.filter((s) => s.status !== 'available').length;
+    const percentBooked = totalSeats > 0 ? bookedSeats / totalSeats : 0;
+    const multiplier = getDynamicMultiplier(percentBooked);
+
+    const seatsWithDynamicPricing = seatsResult.rows.map((seat) => ({
+      ...seat,
+      base_price: seat.price,
+      price: seat.status === 'available'
+        ? Math.round(Number(seat.price) * multiplier)
+        : seat.price,
+    }));
+
     return res.status(200).json({
       event: eventResult.rows[0],
-      seats: seatsResult.rows
+      seats: seatsWithDynamicPricing,
+      pricing: { percentBooked: Math.round(percentBooked * 100), multiplier },
     });
   } catch (err) {
     console.error('getEventWithSeats error:', err);
-
-    return res.status(500).json({
-      error: 'Failed to fetch event'
-    });
+    return res.status(500).json({ error: 'Failed to fetch event' });
   }
 }
 
