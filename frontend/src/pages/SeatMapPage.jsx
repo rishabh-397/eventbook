@@ -6,7 +6,7 @@ import PaymentModal from '../components/PaymentModal';
 import { QRCodeSVG } from 'qrcode.react';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MapPin, Users, TrendingUp, ArrowLeft, Clock, CheckCircle2 } from 'lucide-react';
+import { MapPin, Users, TrendingUp, ArrowLeft, ArrowRight, Clock, CheckCircle2 } from 'lucide-react';
 
 export default function SeatMapPage() {
   const { id } = useParams();
