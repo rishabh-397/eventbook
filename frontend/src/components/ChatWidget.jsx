@@ -82,7 +82,7 @@ export default function ChatWidget() {
         ...prev,
         {
           role: 'assistant',
-          text: "Sorry, I couldn't respond right now.",
+          text: err.response?.data?.error || "Sorry, I couldn't respond right now.",
         },
       ]);
     } finally {

@@ -38,12 +38,15 @@ ${eventsContext}
 
 User question: ${message}`;
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-3.6-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
     const reply = await generateWithRetry(model, prompt);
 
     return res.status(200).json({ reply });
   } catch (err) {
     console.error('chatWithAssistant error:', err);
+    if (err.status === 429 || (err.message && err.message.includes('429'))) {
+      return res.status(429).json({ error: "I'm currently receiving too many requests and hit my API quota. Please try again in a minute!" });
+    }
     return res.status(500).json({ error: 'Failed to get assistant response' });
   }
 }
