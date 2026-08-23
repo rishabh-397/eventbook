@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/client';
 import { useTheme } from '../context/ThemeContext';
+import Logo from '../components/Logo';
 
 export default function EventsPage() {
   const [events, setEvents] = useState([]);
@@ -62,7 +63,7 @@ export default function EventsPage() {
   return (
     <div style={styles.page}>
       <header style={styles.header}>
-        <h1 style={styles.title}>EventBook</h1>
+        <Logo />
 
         <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
           <div style={{ display: 'flex', gap: 6 }}>

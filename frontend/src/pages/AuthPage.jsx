@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/client';
 import StarfieldBackground from '../components/StarfieldBackground';
+import Logo from '../components/Logo';
 
 export default function AuthPage() {
   const [mode, setMode] = useState('login');
@@ -35,7 +36,9 @@ export default function AuthPage() {
       <StarfieldBackground />
       <div style={{ ...styles.card, position: 'relative', zIndex: 1 }}>
         <p style={styles.eyebrow}>Admit One</p>
-        <h1 style={styles.title}>EventBook</h1>
+        <div style={{ margin: '4px 0 24px' }}>
+          <Logo size={36} textSize={28} />
+        </div>
 
         <div style={styles.tabs}>
           <button

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/client';
+import Logo from '../components/Logo';
 
 export default function AdminDashboardPage() {
   const [summary, setSummary] = useState([]);
@@ -52,7 +53,10 @@ export default function AdminDashboardPage() {
 
   return (
     <div style={styles.page}>
-      <button style={styles.back} onClick={() => navigate('/events')}>← All Events</button>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <Logo size={26} textSize={16} />
+        <button style={styles.back} onClick={() => navigate('/events')}>← All Events</button>
+      </div>
 
       <div style={styles.headerRow}>
         <div>

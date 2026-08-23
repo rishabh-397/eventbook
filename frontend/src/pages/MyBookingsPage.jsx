@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/client';
+import Logo from '../components/Logo';
 
 export default function MyBookingsPage() {
   const [bookings, setBookings] = useState([]);
@@ -23,7 +24,8 @@ export default function MyBookingsPage() {
 
   return (
     <div style={styles.page}>
-      <header style={styles.header}>
+      <header style={{ ...styles.header, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Logo size={26} textSize={16} />
         <button style={styles.back} onClick={() => navigate('/events')}>← All Events</button>
       </header>
 

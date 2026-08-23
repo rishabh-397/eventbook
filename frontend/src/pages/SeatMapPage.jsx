@@ -5,6 +5,7 @@ import { io } from 'socket.io-client';
 import PaymentModal from '../components/PaymentModal';
 import { QRCodeSVG } from 'qrcode.react';
 import toast from 'react-hot-toast';
+import Logo from '../components/Logo';
 
 export default function SeatMapPage() {
   const { id } = useParams();
@@ -106,7 +107,10 @@ export default function SeatMapPage() {
 
   return (
     <div style={styles.page}>
-      <button style={styles.back} onClick={() => navigate('/events')}>← All Events</button>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+        <Logo size={26} textSize={16} />
+        <button style={{ ...styles.back, marginBottom: 0 }} onClick={() => navigate('/events')}>← All Events</button>
+      </div>
 
       <p style={styles.eyebrow}>{new Date(event.event_time).toDateString()}</p>
       <h1 style={styles.title}>{event.title}</h1>
