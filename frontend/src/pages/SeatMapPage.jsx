@@ -20,6 +20,8 @@ export default function SeatMapPage() {
   const [showPayment, setShowPayment] = useState(false);
   const [viewerCount, setViewerCount] = useState(0);
   const [pricing, setPricing] = useState(null);
+  const [idempotencyKey, setIdempotencyKey] = useState(crypto.randomUUID());
+  const [groupSize, setGroupSize] = useState(2);
 
   useEffect(() => {
     loadEvent();
@@ -29,6 +31,7 @@ export default function SeatMapPage() {
       : 'http://localhost:4000';
     const socket = io(socketUrl);
     socket.emit('join_event', id);
+    socket.on('connect', loadEvent);
     socket.on('seats_held', loadEvent);
     socket.on('seats_booked', loadEvent);
     socket.on('seats_released', loadEvent);
@@ -48,15 +51,53 @@ export default function SeatMapPage() {
 
   function toggleSeat(seat) {
     if (seat.status !== 'available') return;
-    setSelected((prev) =>
-      prev.includes(seat.id) ? prev.filter((s) => s !== seat.id) : [...prev, seat.id]
-    );
+    setSelected((prev) => {
+      const next = prev.includes(seat.id) ? prev.filter((s) => s !== seat.id) : [...prev, seat.id];
+      setIdempotencyKey(crypto.randomUUID()); // Reset key on selection change
+      return next;
+    });
+  }
+
+  function autoSelectAdjacent() {
+    setError('');
+    // Group seats by row and sort by seat number
+    const rows = {};
+    seats.forEach((s) => {
+      const row = s.seat_number[0];
+      rows[row] = rows[row] || [];
+      rows[row].push(s);
+    });
+
+    for (const row of Object.keys(rows).sort()) {
+      const rowSeats = rows[row].sort((a, b) => a.seat_number.localeCompare(b.seat_number, undefined, { numeric: true }));
+      let consecutive = [];
+
+      for (const seat of rowSeats) {
+        if (seat.status === 'available') {
+          consecutive.push(seat);
+          if (consecutive.length === groupSize) {
+            setSelected(consecutive.map(s => s.id));
+            setIdempotencyKey(crypto.randomUUID());
+            toast.success(`Found ${groupSize} adjacent seats in Row ${row}!`);
+            return;
+          }
+        } else {
+          consecutive = []; // Reset if gap found
+        }
+      }
+    }
+    
+    toast.error(`Could not find ${groupSize} adjacent available seats.`);
   }
 
   async function holdSeats() {
     setError('');
     try {
-      const res = await api.post('/bookings/hold', { eventId: Number(id), seatIds: selected });
+      const res = await api.post(
+        '/bookings/hold', 
+        { eventId: Number(id), seatIds: selected },
+        { headers: { 'Idempotency-Key': idempotencyKey } }
+      );
       setBooking(res.data);
       setStatus('held');
       loadEvent();
@@ -207,6 +248,32 @@ export default function SeatMapPage() {
 
           {/* Sidebar / Map / Legend */}
           <div className="w-full lg:w-80 flex flex-col gap-6">
+            <div className="glass-card p-6">
+              <h3 className="font-display font-semibold mb-4 text-lg">Group Booking</h3>
+              <p className="text-sm text-[#8B93A7] mb-4">Finding seats for your crew? We'll find adjacent seats for you automatically.</p>
+              <div className="flex gap-2 mb-4">
+                {[2, 3, 4, 5].map(size => (
+                  <button
+                    key={size}
+                    onClick={() => setGroupSize(size)}
+                    className={`flex-1 py-1.5 rounded-md text-sm font-semibold transition-colors border ${
+                      groupSize === size 
+                        ? 'bg-[#E8B563] text-[#0B0E14] border-[#E8B563]' 
+                        : 'bg-[#12161F] text-[#8B93A7] border-[#232838] hover:border-[#E8B563]/50'
+                    }`}
+                  >
+                    {size}
+                  </button>
+                ))}
+              </div>
+              <button 
+                onClick={autoSelectAdjacent}
+                className="w-full py-2.5 rounded-lg bg-[#232838] text-white hover:bg-[#2a3043] transition-colors text-sm font-semibold flex items-center justify-center gap-2"
+              >
+                <Users size={16} /> Auto-Select {groupSize} Seats
+              </button>
+            </div>
+
             <div className="glass-card p-6">
               <h3 className="font-display font-semibold mb-4 text-lg">Legend</h3>
               <div className="flex flex-col gap-3">

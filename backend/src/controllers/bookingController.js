@@ -14,41 +14,57 @@ const HOLD_DURATION_SECONDS = 300; // 5 minute hold, like real ticketing sites
 async function holdSeats(req, res) {
   const { eventId, seatIds } = req.body;
   const userId = req.user.id;
-  const lockToken = crypto.randomUUID();
+  const idempotencyKey = req.headers['idempotency-key'];
 
-  const acquiredLocks = [];
+  if (!idempotencyKey) {
+    return res.status(400).json({ error: 'Idempotency-Key header is required' });
+  }
+
+  const client = await pool.connect();
 
   try {
-    for (const seatId of seatIds) {
-      const lockKey = `seat_lock:${seatId}`;
-      const result = await redisClient.set(lockKey, lockToken, {
-        NX: true,
-        EX: HOLD_DURATION_SECONDS,
+    // Check for existing idempotent request
+    const existingResult = await client.query(
+      `SELECT id, hold_expires_at FROM bookings WHERE idempotency_key = $1 AND user_id = $2`,
+      [idempotencyKey, userId]
+    );
+
+    if (existingResult.rows.length > 0) {
+      return res.status(200).json({
+        bookingId: existingResult.rows[0].id,
+        expiresAt: existingResult.rows[0].hold_expires_at,
+        lockToken: 'idempotent-replay',
       });
-
-      if (result === null) {
-        await releaseLocks(acquiredLocks, lockToken);
-        return res.status(409).json({
-          error: `Seat ${seatId} is already held by another user`,
-        });
-      }
-
-      acquiredLocks.push(seatId);
     }
 
-    const client = await pool.connect();
+    const lockToken = crypto.randomUUID();
+    const acquiredLocks = [];
 
     try {
+      for (const seatId of seatIds) {
+        const lockKey = `seat_lock:${seatId}`;
+        const result = await redisClient.set(lockKey, lockToken, {
+          NX: true,
+          EX: HOLD_DURATION_SECONDS,
+        });
+
+        if (result === null) {
+          await releaseLocks(acquiredLocks, lockToken);
+          return res.status(409).json({
+            error: `Seat ${seatId} is already held by another user`,
+          });
+        }
+        acquiredLocks.push(seatId);
+      }
+
       await client.query('BEGIN');
 
-      const expiresAt = new Date(
-        Date.now() + HOLD_DURATION_SECONDS * 1000
-      );
+      const expiresAt = new Date(Date.now() + HOLD_DURATION_SECONDS * 1000);
 
       const bookingResult = await client.query(
-        `INSERT INTO bookings (user_id, event_id, status, hold_expires_at)
-         VALUES ($1, $2, 'pending', $3) RETURNING id`,
-        [userId, eventId, expiresAt]
+        `INSERT INTO bookings (user_id, event_id, status, hold_expires_at, idempotency_key)
+         VALUES ($1, $2, 'pending', $3, $4) RETURNING id`,
+        [userId, eventId, expiresAt, idempotencyKey]
       );
 
       const bookingId = bookingResult.rows[0].id;
@@ -58,7 +74,6 @@ async function holdSeats(req, res) {
           `INSERT INTO booking_seats (booking_id, seat_id) VALUES ($1, $2)`,
           [bookingId, seatId]
         );
-
         await client.query(
           `UPDATE seats SET status = 'held' WHERE id = $1`,
           [seatId]
@@ -67,10 +82,7 @@ async function holdSeats(req, res) {
 
       await client.query('COMMIT');
 
-      req.app
-        .get('io')
-        .to(`event:${eventId}`)
-        .emit('seats_held', { seatIds });
+      req.app.get('io').to(`event:${eventId}`).emit('seats_held', { seatIds });
 
       return res.status(200).json({
         bookingId,
@@ -81,14 +93,12 @@ async function holdSeats(req, res) {
       await client.query('ROLLBACK');
       await releaseLocks(acquiredLocks, lockToken);
       throw dbErr;
-    } finally {
-      client.release();
     }
   } catch (err) {
     console.error('holdSeats error:', err);
-    return res.status(500).json({
-      error: 'Failed to hold seats',
-    });
+    return res.status(500).json({ error: 'Failed to hold seats' });
+  } finally {
+    client.release();
   }
 }
 
@@ -117,6 +127,15 @@ async function confirmBooking(req, res) {
       await client.query('ROLLBACK');
       return res.status(404).json({
         error: 'Booking not found',
+      });
+    }
+
+    if (booking.status === 'confirmed') {
+      await client.query('ROLLBACK');
+      return res.status(200).json({
+        bookingId,
+        status: 'confirmed',
+        message: 'Booking was already confirmed (idempotent replay)',
       });
     }
 
@@ -427,6 +446,32 @@ async function releaseLocks(seatIds, lockToken) {
   }
 }
 
+async function validateTicket(req, res) {
+  const { bookingId } = req.body;
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Only admins can validate tickets' });
+  }
+
+  try {
+    const result = await pool.query(
+      `UPDATE bookings 
+       SET scanned_at = NOW() 
+       WHERE id = $1 AND status = 'confirmed' AND scanned_at IS NULL
+       RETURNING id`,
+      [bookingId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(400).json({ error: 'Ticket invalid, already scanned, or not confirmed' });
+    }
+
+    return res.status(200).json({ message: 'Ticket validated successfully' });
+  } catch (err) {
+    console.error('validateTicket error:', err);
+    return res.status(500).json({ error: 'Failed to validate ticket' });
+  }
+}
+
 module.exports = {
   holdSeats,
   releaseLocks,
@@ -434,4 +479,5 @@ module.exports = {
   cancelBooking,
   getMyBookings,
   getRecommendations,
+  validateTicket,
 };

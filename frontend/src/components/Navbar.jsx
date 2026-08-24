@@ -1,6 +1,6 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useTheme } from '../context/ThemeContext';
-import { LogOut, Ticket, Settings, User } from 'lucide-react';
+import { LogOut, Ticket, Settings, User, ScanLine } from 'lucide-react';
 import Logo from './Logo';
 
 export default function Navbar() {
@@ -42,13 +42,22 @@ export default function Navbar() {
         {/* Links */}
         <div className="flex items-center gap-2">
           {isAdmin && (
-            <Link
-              to="/admin"
-              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${location.pathname === '/admin' ? 'bg-[#E8B563]/10 text-[#E8B563]' : 'text-[#8B93A7] hover:text-white hover:bg-[#12161F]'}`}
-            >
-              <Settings size={16} />
-              Admin
-            </Link>
+            <>
+              <Link
+                to="/admin"
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${location.pathname === '/admin' ? 'bg-[#E8B563]/10 text-[#E8B563]' : 'text-[#8B93A7] hover:text-white hover:bg-[#12161F]'}`}
+              >
+                <Settings size={16} />
+                Admin
+              </Link>
+              <Link
+                to="/admin/scanner"
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${location.pathname === '/admin/scanner' ? 'bg-[#E8B563]/10 text-[#E8B563]' : 'text-[#8B93A7] hover:text-white hover:bg-[#12161F]'}`}
+              >
+                <ScanLine size={16} />
+                Scanner
+              </Link>
+            </>
           )}
 
           <Link

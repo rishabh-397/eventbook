@@ -4,6 +4,7 @@ import EventsPage from './pages/EventsPage';
 import SeatMapPage from './pages/SeatMapPage';
 import MyBookingsPage from './pages/MyBookingsPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
+import AdminScannerPage from './pages/AdminScannerPage';
 import ChatWidget from './components/ChatWidget';
 import Navbar from './components/Navbar';
 
@@ -50,6 +51,14 @@ export default function App() {
               element={
                 <ProtectedRoute>
                   <AdminDashboardPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/scanner"
+              element={
+                <ProtectedRoute>
+                  <AdminScannerPage />
                 </ProtectedRoute>
               }
             />
