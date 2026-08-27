@@ -252,23 +252,29 @@ export default function SeatMapPage() {
               <h3 className="font-display font-semibold mb-4 text-lg">Group Booking</h3>
               <p className="text-sm text-[#8B93A7] mb-4">Finding seats for your crew? We'll find adjacent seats for you automatically.</p>
               <div className="flex gap-2 mb-4">
-                {[2, 3, 4, 5].map(size => (
-                  <button
-                    key={size}
-                    onClick={() => setGroupSize(size)}
-                    className={`flex-1 py-1.5 rounded-md text-sm font-semibold transition-colors border ${
-                      groupSize === size 
-                        ? 'bg-[#E8B563] text-[#0B0E14] border-[#E8B563]' 
-                        : 'bg-[#12161F] text-[#8B93A7] border-[#232838] hover:border-[#E8B563]/50'
-                    }`}
-                  >
-                    {size}
-                  </button>
-                ))}
+                {[{s:2, c:'blue'}, {s:3, c:'purple'}, {s:4, c:'cyan'}, {s:5, c:'rose'}].map(({s, c}) => {
+                  const isActive = groupSize === s;
+                  const glowColor = c === 'cyan' ? 'teal' : (c === 'rose' ? 'rose' : c);
+                  return (
+                    <button
+                      key={s}
+                      onClick={() => setGroupSize(s)}
+                      className={`flex-1 py-1.5 rounded-md text-sm font-semibold transition-all border ${
+                        isActive
+                          ? 'text-white border-transparent shadow-lg scale-105 z-10' 
+                          : 'bg-[#12161F] text-[#8B93A7] border-[#232838] hover:border-[#8B93A7]'
+                      }`}
+                      style={isActive ? { background: `var(--gradient-${c})`, boxShadow: `0 0 12px var(--${glowColor}-glow)` } : {}}
+                    >
+                      {s}
+                    </button>
+                  );
+                })}
               </div>
               <button 
                 onClick={autoSelectAdjacent}
-                className="w-full py-2.5 rounded-lg bg-[#232838] text-white hover:bg-[#2a3043] transition-colors text-sm font-semibold flex items-center justify-center gap-2"
+                className="btn-indigo w-full py-2.5 flex items-center justify-center gap-2"
+                style={{ padding: '10px' }}
               >
                 <Users size={16} /> Auto-Select {groupSize} Seats
               </button>
@@ -348,10 +354,10 @@ export default function SeatMapPage() {
                   <p className="font-semibold text-white">Expires {new Date(booking.expiresAt).toLocaleTimeString()}</p>
                 </div>
                 <div className="p-5 flex-1 flex items-center justify-between sm:justify-end gap-4 bg-[#12161F]">
-                  <button onClick={cancelBooking} className="text-[#8B93A7] hover:text-white text-sm font-semibold transition-colors">
+                  <button onClick={cancelBooking} className="btn-ghost-red">
                     Cancel
                   </button>
-                  <button onClick={() => setShowPayment(true)} className="btn-primary py-2.5 px-8">
+                  <button onClick={() => setShowPayment(true)} className="btn-emerald">
                     Confirm & Pay
                   </button>
                 </div>
@@ -367,7 +373,7 @@ export default function SeatMapPage() {
                     <span className="text-[#8B93A7] text-xs font-mono uppercase tracking-widest mb-1 block">Total</span>
                     <p className="text-2xl font-bold text-[#E8B563]">₹{total}</p>
                   </div>
-                  <button onClick={holdSeats} className="btn-primary py-3 px-6 shadow-[0_0_15px_rgba(232,181,99,0.2)]">
+                  <button onClick={holdSeats} className="btn-sunset py-3 px-6 shadow-[0_0_15px_rgba(244,63,94,0.3)]">
                     Hold Seats
                   </button>
                 </div>
