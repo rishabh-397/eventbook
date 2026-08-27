@@ -11,6 +11,10 @@ const { startExpiredHoldsJob } = require('./jobs/releaseExpiredHolds');
 const app = express();
 const server = http.createServer(app);
 
+// Trust Render / reverse-proxy so express-rate-limit reads the real client IP
+// from X-Forwarded-For instead of throwing ERR_ERL_UNEXPECTED_X_FORWARDED_FOR.
+app.set('trust proxy', 1);
+
 const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:5174',
