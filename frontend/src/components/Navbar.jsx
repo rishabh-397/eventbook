@@ -13,10 +13,24 @@ export default function Navbar() {
 
   if (!user || location.pathname === '/') return null;
 
+  const accent = themes[themeName]?.accent || '#E8B563';
+  const accentGlow = themes[themeName]?.accentGlow || 'rgba(232,181,99,0.15)';
+
   function handleLogout() {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     navigate('/');
+  }
+
+  function linkStyle(path) {
+    const active = location.pathname === path;
+    return active
+      ? { color: accent, background: accentGlow }
+      : {};
+  }
+  function linkClass(path) {
+    const active = location.pathname === path;
+    return `flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${active ? '' : 'text-[#8B93A7] hover:text-white hover:bg-[#12161F]'}`;
   }
 
   return (
@@ -43,27 +57,18 @@ export default function Navbar() {
         <div className="flex items-center gap-2">
           {isAdmin && (
             <>
-              <Link
-                to="/admin"
-                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${location.pathname === '/admin' ? 'bg-[#E8B563]/10 text-[#E8B563]' : 'text-[#8B93A7] hover:text-white hover:bg-[#12161F]'}`}
-              >
+              <Link to="/admin" className={linkClass('/admin')} style={linkStyle('/admin')}>
                 <Settings size={16} />
                 Admin
               </Link>
-              <Link
-                to="/admin/scanner"
-                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${location.pathname === '/admin/scanner' ? 'bg-[#E8B563]/10 text-[#E8B563]' : 'text-[#8B93A7] hover:text-white hover:bg-[#12161F]'}`}
-              >
+              <Link to="/admin/scanner" className={linkClass('/admin/scanner')} style={linkStyle('/admin/scanner')}>
                 <ScanLine size={16} />
                 Scanner
               </Link>
             </>
           )}
 
-          <Link
-            to="/my-bookings"
-            className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${location.pathname === '/my-bookings' ? 'bg-[#E8B563]/10 text-[#E8B563]' : 'text-[#8B93A7] hover:text-white hover:bg-[#12161F]'}`}
-          >
+          <Link to="/my-bookings" className={linkClass('/my-bookings')} style={linkStyle('/my-bookings')}>
             <Ticket size={16} />
             My Bookings
           </Link>
@@ -71,7 +76,10 @@ export default function Navbar() {
           <div className="h-6 w-[1px] bg-[#232838] mx-2" />
 
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#E8B563] to-[#C1443D] flex items-center justify-center text-[#0B0E14] font-bold text-sm">
+            <div
+              className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm"
+              style={{ background: `linear-gradient(135deg, ${accent}, #C1443D)`, color: '#0B0E14' }}
+            >
               {user.name ? user.name[0].toUpperCase() : <User size={16} />}
             </div>
             <button
