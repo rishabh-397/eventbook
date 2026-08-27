@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/client';
 import { useTheme } from '../context/ThemeContext';
@@ -124,6 +124,28 @@ export default function EventsPage() {
               </button>
             </div>
           </motion.div>
+        </div>
+      </div>
+
+      {/* ── Colorful Category Filter Bar ── */}
+      <div className="max-w-6xl mx-auto px-6 mb-8">
+        <div className="flex flex-wrap gap-3 justify-center">
+          <button
+            onClick={() => setSearch('')}
+            style={{ background: accentGlow, color: accent, border: `1px solid ${accent}` }}
+            className="px-5 py-2 rounded-full text-sm font-semibold transition-all hover:opacity-80 active:scale-95"
+          >
+            🎟 All Events
+          </button>
+          <button onClick={() => setSearch('music')}       className="btn-blue   px-5 py-2 rounded-full text-sm">🎵 Music</button>
+          <button onClick={() => setSearch('comedy')}      className="btn-purple  px-5 py-2 rounded-full text-sm">🎭 Comedy</button>
+          <button onClick={() => setSearch('sports')}      className="btn-green   px-5 py-2 rounded-full text-sm">🏅 Sports</button>
+          <button onClick={() => setSearch('theatre')}     className="btn-rose    px-5 py-2 rounded-full text-sm">🎪 Theatre</button>
+          <button onClick={() => setSearch('tech')}        className="btn-cyan    px-5 py-2 rounded-full text-sm">💻 Tech</button>
+          <button onClick={() => setSearch('food')}        className="btn-orange  px-5 py-2 rounded-full text-sm">🍔 Food</button>
+          <button onClick={() => setSearch('art')}         className="btn-indigo  px-5 py-2 rounded-full text-sm">🎨 Art</button>
+          <button onClick={() => setSearch('festival')}    className="btn-sunset  px-5 py-2 rounded-full text-sm">🎆 Festival</button>
+          <button onClick={() => setSearch('workshop')}    className="btn-teal    px-5 py-2 rounded-full text-sm">🛠 Workshop</button>
         </div>
       </div>
 
