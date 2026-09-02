@@ -374,7 +374,7 @@ async function getRecommendations(req, res) {
     }
 
     const upcomingResult = await pool.query(`
-      SELECT id, title, venue, event_time
+      SELECT id, title, venue, event_time, image_url
       FROM events
       WHERE event_time > NOW()
       ORDER BY event_time ASC

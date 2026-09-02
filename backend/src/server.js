@@ -70,10 +70,21 @@ io.on('connection', (socket) => {
   });
 });
 
+const pool = require('./config/db');
+
 const PORT = process.env.PORT || 4000;
 
 async function start() {
   await connectRedis();
+  
+  // Auto-run lightweight schema additions on startup
+  try {
+    await pool.query('ALTER TABLE events ADD COLUMN IF NOT EXISTS image_url TEXT');
+    console.log('Database schema verified');
+  } catch (err) {
+    console.error('Migration error:', err);
+  }
+
   startExpiredHoldsJob(io);
   server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 }
