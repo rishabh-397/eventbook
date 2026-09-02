@@ -12,7 +12,9 @@ const pool = new Pool({
 
 pool.on('error', (err) => {
   console.error('Unexpected error on idle Postgres client', err);
-  process.exit(-1);
+  // Do NOT process.exit(-1) here.
+  // Serverless DBs (like Neon) frequently drop idle connections. 
+  // The pg pool will automatically remove the dead client and reconnect.
 });
 
 module.exports = pool;
