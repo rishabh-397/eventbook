@@ -208,8 +208,15 @@ export default function EventsPage() {
                 className={`glass-card overflow-hidden group cursor-pointer transition-all hover:-translate-y-1 ${i === 0 && !search ? 'md:col-span-2 lg:col-span-2 flex flex-col md:flex-row' : 'flex flex-col'}`}
                 onClick={() => navigate(`/events/${ev.id}`)}
               >
-                <div className={`bg-gradient-to-br from-[#1A1F2E] to-[#0B0E14] p-6 flex flex-col justify-between ${i === 0 && !search ? 'md:w-2/5 border-r border-[#232838]' : ''}`}>
-                  <div>
+                <div 
+                  className={`p-6 flex flex-col justify-between relative overflow-hidden ${i === 0 && !search ? 'md:w-2/5 border-r border-[#232838]' : ''}`}
+                  style={{
+                    background: ev.image_url 
+                      ? `linear-gradient(to bottom, rgba(11, 14, 20, 0.3), rgba(11, 14, 20, 0.95)), url(${ev.image_url}) center/cover` 
+                      : 'linear-gradient(to bottom right, #1A1F2E, #0B0E14)'
+                  }}
+                >
+                  <div className="relative z-10">
                     <div className="flex items-center gap-2 text-[#8B93A7] font-mono text-xs uppercase tracking-wider mb-3">
                       <Calendar size={14} />
                       {new Date(ev.event_time).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}

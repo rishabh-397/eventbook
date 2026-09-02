@@ -10,7 +10,7 @@ export default function AdminDashboardPage() {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({
     title: '', description: '', venue: '', eventTime: '',
-    seatRows: 5, seatsPerRow: 10, price: 1000, latitude: '', longitude: '',
+    seatRows: 5, seatsPerRow: 10, price: 1000, latitude: '', longitude: '', imageUrl: '',
   });
   const [error, setError] = useState('');
   const [creating, setCreating] = useState(false);
@@ -42,7 +42,7 @@ export default function AdminDashboardPage() {
         longitude: form.longitude ? Number(form.longitude) : null,
       });
       setShowForm(false);
-      setForm({ title: '', description: '', venue: '', eventTime: '', seatRows: 5, seatsPerRow: 10, price: 1000, latitude: '', longitude: '' });
+      setForm({ title: '', description: '', venue: '', eventTime: '', seatRows: 5, seatsPerRow: 10, price: 1000, latitude: '', longitude: '', imageUrl: '' });
       loadSummary();
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to create event');
@@ -144,6 +144,11 @@ export default function AdminDashboardPage() {
                 <div className="mb-6">
                   <label className="block text-xs font-mono text-[#8B93A7] uppercase tracking-wider mb-2">Description</label>
                   <textarea className="input-base min-h-[100px] resize-y" placeholder="Event details..." value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+                </div>
+
+                <div className="mb-6">
+                  <label className="block text-xs font-mono text-[#8B93A7] uppercase tracking-wider mb-2">Poster Image URL (Optional)</label>
+                  <input className="input-base" placeholder="https://images.unsplash.com/photo-..." value={form.imageUrl} onChange={(e) => setForm({ ...form, imageUrl: e.target.value })} />
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">

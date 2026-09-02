@@ -187,6 +187,17 @@ export default function SeatMapPage() {
       </div>
 
       <div className="max-w-6xl mx-auto px-6">
+        {event.image_url && (
+          <div 
+            className="w-full h-64 md:h-80 rounded-2xl mb-8 relative overflow-hidden border border-[#232838] shadow-2xl"
+            style={{
+              background: `url(${event.image_url}) center/cover no-repeat`
+            }}
+          >
+            <div className="absolute inset-0 bg-gradient-to-t from-[#0B0E14] via-transparent to-transparent"></div>
+          </div>
+        )}
+
         {/* Map & Legend Split */}
         <div className="flex flex-col lg:flex-row gap-8 items-start">
           

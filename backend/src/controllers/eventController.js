@@ -2,7 +2,7 @@ const pool = require('../config/db');
 const genAI = require('../config/ai');
 
 async function createEvent(req, res) {
-  const { title, description, venue, eventTime, seatRows, seatsPerRow, price, latitude, longitude } = req.body;
+  const { title, description, venue, eventTime, seatRows, seatsPerRow, price, latitude, longitude, imageUrl } = req.body;
 
   if (!title || !eventTime || !seatRows || !seatsPerRow || !price) {
     return res.status(400).json({ error: 'title, eventTime, seatRows, seatsPerRow, and price are required' });
@@ -13,9 +13,9 @@ async function createEvent(req, res) {
     await client.query('BEGIN');
 
     const eventResult = await client.query(
-      `INSERT INTO events (title, description, venue, event_time, latitude, longitude, created_by)
-       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
-      [title, description, venue, eventTime, latitude || null, longitude || null, req.user.id]
+      `INSERT INTO events (title, description, venue, event_time, latitude, longitude, image_url, created_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
+      [title, description, venue, eventTime, latitude || null, longitude || null, imageUrl || null, req.user.id]
     );
 
     const eventId = eventResult.rows[0].id;
@@ -54,7 +54,7 @@ async function listEvents(req, res) {
 
   try {
     let query = `
-      SELECT e.id, e.title, e.description, e.venue, e.event_time,
+      SELECT e.id, e.title, e.description, e.venue, e.event_time, e.image_url,
         COUNT(s.id) FILTER (WHERE s.status = 'available') AS seats_available,
         COUNT(s.id) AS total_seats
       FROM events e
@@ -118,7 +118,7 @@ Examples:
     const filters = JSON.parse(raw);
 
     let sql = `
-      SELECT e.id, e.title, e.description, e.venue, e.event_time,
+      SELECT e.id, e.title, e.description, e.venue, e.event_time, e.image_url,
         COUNT(s.id) FILTER (WHERE s.status = 'available') AS seats_available,
         COUNT(s.id) AS total_seats,
         MIN(s.price) AS min_price
@@ -185,7 +185,7 @@ function getDynamicMultiplier(percentBooked) {
 async function getEventWithSeats(req, res) {
   const { id } = req.params;
   try {
-    const eventResult = await pool.query('SELECT * FROM events WHERE id = $1', [id]);
+    const eventResult = await pool.query('SELECT e.*, e.image_url FROM events e WHERE e.id = $1', [id]);
     if (eventResult.rows.length === 0) {
       return res.status(404).json({ error: 'Event not found' });
     }
@@ -196,22 +196,23 @@ async function getEventWithSeats(req, res) {
     );
 
     const totalSeats = seatsResult.rows.length;
-    const bookedSeats = seatsResult.rows.filter((s) => s.status !== 'available').length;
+    const bookedSeats = seatsResult.rows.filter(s => s.status !== 'available').length;
+    
+    // Apply dynamic pricing
     const percentBooked = totalSeats > 0 ? bookedSeats / totalSeats : 0;
     const multiplier = getDynamicMultiplier(percentBooked);
-
-    const seatsWithDynamicPricing = seatsResult.rows.map((seat) => ({
+    const seatsWithDynamicPrice = seatsResult.rows.map(seat => ({
       ...seat,
-      base_price: seat.price,
-      price: seat.status === 'available'
-        ? Math.round(Number(seat.price) * multiplier)
-        : seat.price,
+      price: Math.round(Number(seat.price) * multiplier)
     }));
 
-    return res.status(200).json({
-      event: eventResult.rows[0],
-      seats: seatsWithDynamicPricing,
-      pricing: { percentBooked: Math.round(percentBooked * 100), multiplier },
+    return res.status(200).json({ 
+      event: eventResult.rows[0], 
+      seats: seatsWithDynamicPrice,
+      pricing: {
+        percentBooked,
+        multiplier
+      }
     });
   } catch (err) {
     console.error('getEventWithSeats error:', err);

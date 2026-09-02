@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS events (
   event_time TIMESTAMP NOT NULL,
   latitude DECIMAL(10, 7),
   longitude DECIMAL(10, 7),
+  image_url TEXT,
   created_by INTEGER REFERENCES users(id),
   created_at TIMESTAMP DEFAULT NOW()
 );
