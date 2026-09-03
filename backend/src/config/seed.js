@@ -1,5 +1,6 @@
 require('dotenv').config();
 const pool = require('./db');
+const { getBestImageForEvent } = require('../services/imageService');
 
 const eventTypes = [
   { prefix: 'Live in Concert' },
@@ -100,10 +101,12 @@ async function seed() {
     try {
       await client.query('BEGIN');
 
+      const imageUrl = getBestImageForEvent(ev.title, ev.venue, `Live event at ${ev.venue}`);
+
       const eventResult = await client.query(
-        `INSERT INTO events (title, description, venue, event_time, created_by)
-         VALUES ($1, $2, $3, $4, $5) RETURNING id`,
-        [ev.title, `Live event at ${ev.venue}`, ev.venue, ev.eventTime, adminId]
+        `INSERT INTO events (title, description, venue, event_time, image_url, created_by)
+         VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+        [ev.title, `Live event at ${ev.venue}`, ev.venue, ev.eventTime, imageUrl, adminId]
       );
       const eventId = eventResult.rows[0].id;
 

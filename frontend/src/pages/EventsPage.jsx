@@ -209,10 +209,10 @@ export default function EventsPage() {
                 onClick={() => navigate(`/events/${ev.id}`)}
               >
                 <div 
-                  className={`p-6 flex flex-col justify-between relative overflow-hidden ${i === 0 && !search ? 'md:w-2/5 border-r border-[#232838]' : ''}`}
+                  className={`p-6 flex flex-col justify-between relative overflow-hidden min-h-[220px] ${i === 0 && !search ? 'md:w-1/2 min-h-[280px] border-r border-[#232838]' : ''}`}
                   style={{
                     background: ev.image_url 
-                      ? `linear-gradient(to bottom, rgba(11, 14, 20, 0.3), rgba(11, 14, 20, 0.95)), url(${ev.image_url}) center/cover` 
+                      ? `linear-gradient(to bottom, rgba(11, 14, 20, 0.35), rgba(11, 14, 20, 0.92)), url(${ev.image_url}) center/cover no-repeat` 
                       : 'linear-gradient(to bottom right, #1A1F2E, #0B0E14)'
                   }}
                 >

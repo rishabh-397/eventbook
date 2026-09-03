@@ -20,6 +20,7 @@ A full-stack, production-grade ticket booking platform built to demonstrate real
 | **Database** | PostgreSQL (Neon — serverless) |
 | **Cache / Locking** | Redis (Upstash — serverless) |
 | **AI** | Google Gemini API (gemini-3.6-flash) |
+| **Image Search** | Wikimedia Commons & Wikipedia APIs, Curated HD CDN |
 | **Email** | Brevo (transactional HTTP API) |
 | **Deployment** | Vercel (frontend) · Render (backend) |
 | **Testing** | k6 (load testing) |
@@ -29,12 +30,19 @@ A full-stack, production-grade ticket booking platform built to demonstrate real
 ## Features
 
 ### 🎨 Advanced UI/UX (Production-Grade Design)
+- **High-Resolution Event Posters & Hero Banners** — every event features matching artist & concert photography, full-bleed card backdrops with layered gradient masks, and widescreen cinematic banners in the booking view
 - **Glassmorphism Design System** — custom CSS `glass-card` and `glass-panel` utilities with backdrop blur, layered transparency, and ambient glow
 - **Bento Grid Layout** — featured events span multiple grid columns, creating a modern editorial layout
 - **Framer Motion Animations** — page transitions, staggered list entries, spring-physics floating action bar, and AnimatePresence for route changes
 - **Skeleton Loaders** — shimmer placeholders replace plain "loading..." text across all async pages
 - **Custom Theme System** — user-selectable accent colors (gold, blue, purple, rose), persisted in localStorage
 - **Ticket Stub Design** — "My Bookings" uses CSS masks for a perforated-edge ticket appearance with QR code integration
+
+### 🖼️ Online Event Image Search & Auto-Resolution
+- **Live Image Search Engine (`GET /api/events/search-images`)** — queries Wikimedia Commons, Wikipedia Open APIs, and curated HD archives to find authentic concert, stage, and artist photography on-demand
+- **Interactive Admin Image Picker** — visual modal in the event creator with search-as-you-type, popular artist quick tags (*Coldplay, Arijit Singh, Diljit, Zakir Khan, EDM, Comedy*), and 1-click selection
+- **Live Poster Preview** — real-time aspect-ratio preview banner with change and remove actions before publishing
+- **Smart Auto-Assignment** — if an organizer leaves the poster URL blank, the backend automatically analyzes title, venue, and genre to assign an authentic high-resolution poster
 
 ### ⚡ Real-Time Architecture
 - **Live Seat Map** — Socket.io broadcasts seat state changes (held/booked/released) to all connected browsers instantly — no polling

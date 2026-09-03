@@ -1,5 +1,6 @@
 const pool = require('../config/db');
 const genAI = require('../config/ai');
+const { getBestImageForEvent, searchOnlineImages } = require('../services/imageService');
 
 async function createEvent(req, res) {
   const { title, description, venue, eventTime, seatRows, seatsPerRow, price, latitude, longitude, imageUrl } = req.body;
@@ -8,6 +9,10 @@ async function createEvent(req, res) {
     return res.status(400).json({ error: 'title, eventTime, seatRows, seatsPerRow, and price are required' });
   }
 
+  const finalImageUrl = imageUrl && imageUrl.trim()
+    ? imageUrl.trim()
+    : getBestImageForEvent(title, venue, description);
+
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -15,7 +20,7 @@ async function createEvent(req, res) {
     const eventResult = await client.query(
       `INSERT INTO events (title, description, venue, event_time, latitude, longitude, image_url, created_by)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
-      [title, description, venue, eventTime, latitude || null, longitude || null, imageUrl || null, req.user.id]
+      [title, description, venue, eventTime, latitude || null, longitude || null, finalImageUrl, req.user.id]
     );
 
     const eventId = eventResult.rows[0].id;
@@ -255,10 +260,22 @@ async function getAdminEventsSummary(req, res) {
   }
 }
 
+async function searchEventImages(req, res) {
+  const { q } = req.query;
+  try {
+    const results = await searchOnlineImages(q || '');
+    return res.status(200).json({ results });
+  } catch (err) {
+    console.error('searchEventImages error:', err);
+    return res.status(500).json({ error: 'Failed to search images' });
+  }
+}
+
 module.exports = {
   createEvent,
   listEvents,
   getEventWithSeats,
   getAdminEventsSummary,
-  naturalLanguageSearch
-};
+  naturalLanguageSearch,
+  searchEventImages
+};
