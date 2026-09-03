@@ -46,6 +46,9 @@ app.use('/api/auth', require('./routes/auth'));
 app.use('/api/events', require('./routes/events'));
 app.use('/api/bookings', bookingLimiter, require('./routes/bookings'));
 app.use('/api/chat', require('./routes/chat'));
+app.use('/api/payments', require('./routes/payments'));
+app.use('/api/analytics', require('./routes/analytics'));
+app.use('/api/waitlist', require('./routes/waitlist'));
 
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 

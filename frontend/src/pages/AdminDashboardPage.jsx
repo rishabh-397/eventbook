@@ -2,11 +2,13 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/client';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Ticket, IndianRupee, Activity, ArrowLeft, LayoutDashboard, MapPin, Calendar, Sparkles, Search, Image, X, Check } from 'lucide-react';
+import { Plus, Ticket, IndianRupee, Activity, ArrowLeft, LayoutDashboard, MapPin, Calendar, Sparkles, Search, Image, X, Check, TrendingUp, BarChart3 } from 'lucide-react';
+import AnalyticsView from '../components/AnalyticsView';
 
 const PRESET_IMAGE_TAGS = ['Coldplay', 'Arijit Singh', 'Diljit Dosanjh', 'Zakir Khan', 'Sunidhi Chauhan', 'Concert', 'Comedy', 'EDM', 'Classical', 'Cricket'];
 
 export default function AdminDashboardPage() {
+  const [activeTab, setActiveTab] = useState('events'); // 'events' | 'analytics'
   const [summary, setSummary] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -89,20 +91,51 @@ export default function AdminDashboardPage() {
           <ArrowLeft size={16} /> Back to Events
         </button>
 
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
           <div>
             <div className="flex items-center gap-3 text-[#E8B563] font-mono text-sm tracking-widest uppercase mb-2">
               <LayoutDashboard size={18} /> Box Office
             </div>
             <h1 className="text-4xl font-display font-bold text-white">Admin Dashboard</h1>
           </div>
-          <button 
-            onClick={() => setShowForm(!showForm)} 
-            className={`flex items-center gap-2 px-6 py-3 rounded-lg font-bold transition-all shadow-lg ${showForm ? 'bg-[#232838] text-white hover:bg-[#32384A]' : 'bg-[#E8B563] text-[#0B0E14] hover:bg-[#F0C57B] shadow-[0_0_20px_rgba(232,181,99,0.2)]'}`}
+          {activeTab === 'events' && (
+            <button 
+              onClick={() => setShowForm(!showForm)} 
+              className={`flex items-center gap-2 px-6 py-3 rounded-lg font-bold transition-all shadow-lg ${showForm ? 'bg-[#232838] text-white hover:bg-[#32384A]' : 'bg-[#E8B563] text-[#0B0E14] hover:bg-[#F0C57B] shadow-[0_0_20px_rgba(232,181,99,0.2)]'}`}
+            >
+              {showForm ? 'Cancel' : <><Plus size={20} /> New Event</>}
+            </button>
+          )}
+        </div>
+
+        {/* Tab Navigation */}
+        <div className="flex items-center gap-2 border-b border-[#232838] mb-10">
+          <button
+            onClick={() => setActiveTab('events')}
+            className={`flex items-center gap-2 px-5 py-3 rounded-t-xl text-sm font-semibold transition-all border-b-2 -mb-px cursor-pointer ${
+              activeTab === 'events'
+                ? 'border-[#E8B563] text-[#E8B563] bg-[#E8B563]/5'
+                : 'border-transparent text-[#8B93A7] hover:text-white'
+            }`}
           >
-            {showForm ? 'Cancel' : <><Plus size={20} /> New Event</>}
+            <LayoutDashboard size={16} /> Events Management
+          </button>
+          <button
+            onClick={() => setActiveTab('analytics')}
+            className={`flex items-center gap-2 px-5 py-3 rounded-t-xl text-sm font-semibold transition-all border-b-2 -mb-px cursor-pointer ${
+              activeTab === 'analytics'
+                ? 'border-[#E8B563] text-[#E8B563] bg-[#E8B563]/5'
+                : 'border-transparent text-[#8B93A7] hover:text-white'
+            }`}
+          >
+            <TrendingUp size={16} /> Deep Analytics & AI Insights
           </button>
         </div>
+
+        {activeTab === 'analytics' ? (
+          <AnalyticsView events={summary} />
+        ) : (
+          <>
 
         {/* KPI Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
@@ -350,6 +383,8 @@ export default function AdminDashboardPage() {
             </div>
           </div>
         )}
+        </>
+      )}
       </div>
 
       {/* Online Image Search Modal */}

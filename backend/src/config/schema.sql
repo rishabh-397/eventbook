@@ -56,5 +56,24 @@ CREATE TABLE IF NOT EXISTS payments (
   booking_id INTEGER REFERENCES bookings(id),
   amount DECIMAL(10,2),
   status VARCHAR(20) DEFAULT 'pending', -- 'pending', 'success', 'failed'
+  provider VARCHAR(50) DEFAULT 'stripe_test',
+  provider_payment_id TEXT,
+  provider_order_id TEXT,
+  currency VARCHAR(10) DEFAULT 'INR',
+  error_message TEXT,
   created_at TIMESTAMP DEFAULT NOW()
 );
+
+CREATE TABLE IF NOT EXISTS waitlist (
+  id SERIAL PRIMARY KEY,
+  event_id INTEGER REFERENCES events(id) ON DELETE CASCADE,
+  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  seats_requested INTEGER DEFAULT 1,
+  status VARCHAR(20) DEFAULT 'waiting', -- 'waiting', 'offered', 'claimed', 'expired'
+  reservation_token TEXT,
+  offer_expires_at TIMESTAMP,
+  created_at TIMESTAMP DEFAULT NOW(),
+  UNIQUE(event_id, user_id, status)
+);
+CREATE INDEX IF NOT EXISTS idx_waitlist_event_status ON waitlist(event_id, status, created_at);
+

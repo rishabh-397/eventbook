@@ -226,20 +226,24 @@ export default function EventsPage() {
                       <MapPin size={14} /><span className="truncate">{ev.venue}</span>
                     </div>
                   </div>
-                  {Number(ev.seats_available) <= 10 && (
+                  {Number(ev.seats_available) === 0 ? (
+                    <div className="inline-flex items-center gap-1.5 text-[#E8B563] text-xs font-bold bg-[#E8B563]/10 border border-[#E8B563]/30 px-3 py-1.5 rounded-md mt-4 w-fit">
+                      <Users size={14} /> Sold Out • Waitlist Open
+                    </div>
+                  ) : Number(ev.seats_available) <= 10 ? (
                     <div className="inline-flex items-center gap-1.5 text-[#C1443D] text-xs font-bold bg-[#C1443D]/10 px-3 py-1.5 rounded-md mt-4 w-fit">
                       <Users size={14} /> Only {ev.seats_available} seats left!
                     </div>
-                  )}
+                  ) : null}
                 </div>
                 <div className={`p-6 bg-[#12161F] flex flex-col justify-end flex-1 ${i === 0 && !search ? 'border-t md:border-t-0 border-[#232838]' : 'border-t border-[#232838]'}`}>
                   <div className="flex items-center justify-between">
                     <span className="text-lg font-semibold text-white">₹{ev.price || '1000'}</span>
                     <button
-                      className="px-4 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2"
+                      className="px-4 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 cursor-pointer"
                       style={{ background: accentGlow, color: accent }}
                     >
-                      Get Tickets <ArrowRight size={16} />
+                      {Number(ev.seats_available) === 0 ? 'Join Waitlist' : 'Get Tickets'} <ArrowRight size={16} />
                     </button>
                   </div>
                 </div>

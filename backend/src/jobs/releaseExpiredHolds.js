@@ -1,6 +1,7 @@
 const cron = require('node-cron');
 const pool = require('../config/db');
 const { redisClient } = require('../config/redis');
+const { offerFreedSeatsToWaitlist } = require('../controllers/waitlistController');
 
 /**
  * Runs every 30 seconds. Finds bookings whose 5-minute hold has expired
@@ -44,6 +45,9 @@ function startExpiredHoldsJob(io) {
         }
 
         io.to(`event:${booking.event_id}`).emit('seats_released', { seatIds });
+
+        // Auto-assign released seat to waiting users
+        await offerFreedSeatsToWaitlist(booking.event_id, io);
       }
 
       await client.query('COMMIT');

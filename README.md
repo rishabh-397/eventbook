@@ -59,8 +59,19 @@ A full-stack, production-grade ticket booking platform built to demonstrate real
 ### 🤖 AI-Powered (Google Gemini)
 - **AI Chatbot Assistant** — answers natural-language questions about events, grounded in real DB data (RAG-lite: query results injected as context, not hallucinated)
 - **Natural Language Search** — free-text queries like *"comedy shows under ₹1000 in Delhi"* parsed into structured SQL filters by the LLM
+- **AI Event Insights Panel** — live predictive engine uses `gemini-3.6-flash` to forecast sellout dates, compute final occupancy, recommend dynamic pricing multipliers, and provide tactical organizer advice
 - **AI Recommendations** — personalized "Recommended For You" section suggests upcoming events based on each user's booking history
 - **Graceful Quota Handling** — 429 rate-limit errors return a friendly in-chat message instead of crashing
+
+### 💳 Payment Gateway Integration
+- **Hold → Pay → Confirm Saga** — seats are held securely in Redis while payment is authorized, then atomically confirmed in Postgres upon success
+- **Test Checkout Modal** — interactive checkout UI supporting simulated Credit Card and UPI payments with realistic processing states
+- **Cryptographic Webhooks** — backend validates asynchronous gateway events via HMAC-SHA256 signature verification
+
+### 🎟️ Automated Waitlist System
+- **Smart Queueing** — users can join a waitlist for sold-out events, requesting a specific number of seats
+- **Auto-Reservation Windows** — when a hold expires or a booking is cancelled, a cron job automatically reserves those seats for the next user in line with a 5-minute checkout window
+- **Real-Time Notification Banner** — users with active waitlist offers see a glowing countdown banner to claim their seats
 
 ### 👥 Group Booking
 - **Adjacent Seat Auto-Selection** — users choose a group size (2–5) and click "Auto-Select"; an algorithm scans rows for the first run of consecutive available seats and selects them instantly
@@ -85,10 +96,12 @@ A full-stack, production-grade ticket booking platform built to demonstrate real
 - **Idempotency at Every Layer** — protects against double-clicks, network retries, and browser re-submissions
 - **Vercel SPA Routing** — `vercel.json` rewrites all routes to `index.html` so React Router deep links work correctly in production
 
-### 📊 Admin Dashboard
-- **KPI Cards** — gradient metric cards for total events, bookings, and revenue
+### 📊 Advanced Admin Dashboard & Analytics
+- **Live KPI Overview** — gradient metric cards for active inventory, total bookings, occupancy rate, and gross revenue
 - **Event Management** — create events with location, pricing, and capacity via a slide-in animated form
-- **Occupancy Stats** — per-event booking count, revenue totals, and animated occupancy progress bars
+- **Deep Analytics View** — interactive SVG data visualizations:
+  - **Revenue Velocity Chart:** Area graph showing gross booking revenue over the last 14 days
+  - **Peak Booking Hours:** 24-hour distribution bar chart highlighting the hottest booking windows
 - **Scanner Access** — one-click nav link to the ticket validation scanner
 
 ---

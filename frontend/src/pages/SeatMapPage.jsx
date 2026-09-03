@@ -6,7 +6,7 @@ import PaymentModal from '../components/PaymentModal';
 import { QRCodeSVG } from 'qrcode.react';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MapPin, Users, TrendingUp, ArrowLeft, ArrowRight, Clock, CheckCircle2 } from 'lucide-react';
+import { MapPin, Users, TrendingUp, ArrowLeft, ArrowRight, Clock, CheckCircle2, Bell, Sparkles, AlertCircle } from 'lucide-react';
 
 export default function SeatMapPage() {
   const { id } = useParams();
@@ -22,20 +22,28 @@ export default function SeatMapPage() {
   const [pricing, setPricing] = useState(null);
   const [idempotencyKey, setIdempotencyKey] = useState(crypto.randomUUID());
   const [groupSize, setGroupSize] = useState(2);
+  const [waitlistInfo, setWaitlistInfo] = useState(null);
+  const [joiningWaitlist, setJoiningWaitlist] = useState(false);
+  const [waitlistSeatsRequested, setWaitlistSeatsRequested] = useState(1);
 
   useEffect(() => {
     loadEvent();
+    loadWaitlist();
 
     const socketUrl = import.meta.env.VITE_API_URL
       ? import.meta.env.VITE_API_URL.replace('/api', '')
       : 'http://localhost:4000';
     const socket = io(socketUrl);
     socket.emit('join_event', id);
-    socket.on('connect', loadEvent);
+    socket.on('connect', () => { loadEvent(); loadWaitlist(); });
     socket.on('seats_held', loadEvent);
     socket.on('seats_booked', loadEvent);
-    socket.on('seats_released', loadEvent);
+    socket.on('seats_released', () => { loadEvent(); loadWaitlist(); });
     socket.on('viewer_count', ({ count }) => setViewerCount(count));
+    socket.on('waitlist_opportunity', () => {
+      loadWaitlist();
+      toast('A seat opened up on the waitlist!', { icon: '🎟️' });
+    });
 
     return () => socket.disconnect();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -47,6 +55,44 @@ export default function SeatMapPage() {
       setSeats(res.data.seats);
       setPricing(res.data.pricing);
     });
+  }
+
+  async function loadWaitlist() {
+    try {
+      const res = await api.get(`/waitlist/${id}/status`);
+      setWaitlistInfo(res.data);
+    } catch (e) {
+      // ignore guest
+    }
+  }
+
+  async function handleJoinWaitlist() {
+    setJoiningWaitlist(true);
+    try {
+      const res = await api.post(`/waitlist/${id}/join`, {
+        seatsRequested: waitlistSeatsRequested
+      });
+      toast.success(`Joined waitlist! You are #${res.data.position} in line.`);
+      loadWaitlist();
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to join waitlist');
+    } finally {
+      setJoiningWaitlist(false);
+    }
+  }
+
+  async function handleClaimOffer() {
+    try {
+      const res = await api.post(`/waitlist/${id}/claim`);
+      setBooking({ bookingId: res.data.bookingId, expiresAt: res.data.expiresAt });
+      setStatus('held');
+      setShowPayment(true);
+      toast.success('Seat claimed! Complete payment to confirm.');
+      loadEvent();
+      loadWaitlist();
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to claim seat');
+    }
   }
 
   function toggleSeat(seat) {
@@ -108,20 +154,12 @@ export default function SeatMapPage() {
     }
   }
 
-  async function handlePaymentSuccess() {
-    setError('');
-    try {
-      const res = await api.post(`/bookings/${booking.bookingId}/confirm`);
-      setStatus('confirmed');
-      setBooking((b) => ({ ...b, amount: res.data.amount }));
-      setShowPayment(false);
-      toast.success('Booking confirmed!');
-    } catch (err) {
-      const msg = err.response?.data?.error || 'Failed to confirm';
-      setError(msg);
-      toast.error(msg);
-      setShowPayment(false);
-    }
+  function handlePaymentSuccess(result) {
+    setStatus('confirmed');
+    setBooking((b) => ({ ...b, amount: result?.amount || b?.amount }));
+    setShowPayment(false);
+    toast.success('Payment verified & booking confirmed!');
+    loadEvent();
   }
 
   async function cancelBooking() {
@@ -187,6 +225,33 @@ export default function SeatMapPage() {
       </div>
 
       <div className="max-w-6xl mx-auto px-6">
+        {/* Waitlist Active Offer Banner */}
+        {waitlistInfo?.status === 'offered' && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-6 p-4 rounded-xl bg-gradient-to-r from-[#E8B563]/20 via-[#4A9B7F]/20 to-[#E8B563]/10 border border-[#E8B563] flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xl shadow-[#E8B563]/10"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-[#E8B563] text-[#0B0E14] flex items-center justify-center font-bold">
+                <Sparkles size={20} />
+              </div>
+              <div>
+                <h4 className="text-white font-bold font-display">A Seat Opened Up For You!</h4>
+                <p className="text-xs text-[#8B93A7]">
+                  Exclusive reservation held until {waitlistInfo.offerExpiresAt ? new Date(waitlistInfo.offerExpiresAt).toLocaleTimeString() : '5 minutes'}.
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={handleClaimOffer}
+              className="px-6 py-2.5 rounded-lg bg-[#E8B563] hover:bg-[#F0C57B] text-[#0B0E14] font-bold text-sm transition-all shadow-lg flex items-center gap-2 cursor-pointer"
+            >
+              Claim & Checkout <ArrowRight size={16} />
+            </button>
+          </motion.div>
+        )}
+
         {event.image_url && (
           <div 
             className="w-full h-64 md:h-80 rounded-2xl mb-8 relative overflow-hidden border border-[#232838] shadow-2xl"
@@ -257,39 +322,95 @@ export default function SeatMapPage() {
             </div>
           </div>
 
-          {/* Sidebar / Map / Legend */}
+          {/* Sidebar Controls */}
           <div className="w-full lg:w-80 flex flex-col gap-6">
-            <div className="glass-card p-6">
-              <h3 className="font-display font-semibold mb-4 text-lg">Group Booking</h3>
-              <p className="text-sm text-[#8B93A7] mb-4">Finding seats for your crew? We'll find adjacent seats for you automatically.</p>
-              <div className="flex gap-2 mb-4">
-                {[{s:2, c:'blue'}, {s:3, c:'purple'}, {s:4, c:'cyan'}, {s:5, c:'rose'}].map(({s, c}) => {
-                  const isActive = groupSize === s;
-                  const glowColor = c === 'cyan' ? 'teal' : (c === 'rose' ? 'rose' : c);
-                  return (
+            
+            {/* If event has 0 available seats, show Waitlist system */}
+            {seats.length > 0 && seats.filter(s => s.status === 'available').length === 0 ? (
+              <div className="glass-card p-6 border-[#E8B563]/30">
+                <div className="flex items-center gap-2 text-[#E8B563] font-mono text-xs uppercase tracking-wider mb-2">
+                  <Bell size={14} /> Sold Out Event
+                </div>
+                <h3 className="font-display font-bold text-xl text-white mb-2">Join Waitlist</h3>
+                <p className="text-xs text-[#8B93A7] mb-4 leading-relaxed">
+                  When a hold expires or is cancelled, seats are automatically reserved for the next fan in line.
+                </p>
+
+                {waitlistInfo?.inWaitlist ? (
+                  <div className="p-4 rounded-xl bg-[#0B0E14] border border-[#232838] text-center">
+                    <span className="text-[11px] font-mono text-[#8B93A7] uppercase block mb-1">Your Queue Status</span>
+                    <p className="text-2xl font-bold font-display text-[#E8B563]">
+                      #{waitlistInfo.position || 1} in Line
+                    </p>
+                    <p className="text-xs text-[#4A9B7F] mt-1 flex items-center justify-center gap-1">
+                      <Clock size={12} /> Active queue • We will notify you instantly.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-xs text-[#8B93A7] font-mono block mb-1.5">Seats Needed</label>
+                      <div className="flex gap-2">
+                        {[1, 2, 3, 4].map(n => (
+                          <button
+                            key={n}
+                            type="button"
+                            onClick={() => setWaitlistSeatsRequested(n)}
+                            className={`flex-1 py-1.5 rounded-md text-xs font-bold border transition-all ${
+                              waitlistSeatsRequested === n
+                                ? 'bg-[#E8B563] text-[#0B0E14] border-[#E8B563]'
+                                : 'bg-[#12161F] text-[#8B93A7] border-[#232838]'
+                            }`}
+                          >
+                            {n}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                     <button
-                      key={s}
-                      onClick={() => setGroupSize(s)}
-                      className={`flex-1 py-1.5 rounded-md text-sm font-semibold transition-all border ${
-                        isActive
-                          ? 'text-white border-transparent shadow-lg scale-105 z-10' 
-                          : 'bg-[#12161F] text-[#8B93A7] border-[#232838] hover:border-[#8B93A7]'
-                      }`}
-                      style={isActive ? { background: `var(--gradient-${c})`, boxShadow: `0 0 12px var(--${glowColor}-glow)` } : {}}
+                      onClick={handleJoinWaitlist}
+                      disabled={joiningWaitlist}
+                      className="w-full py-2.5 rounded-lg bg-[#E8B563] text-[#0B0E14] font-bold text-sm hover:bg-[#F0C57B] transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-[#E8B563]/10"
                     >
-                      {s}
+                      <Bell size={16} /> {joiningWaitlist ? 'Joining...' : 'Join Waitlist Queue'}
                     </button>
-                  );
-                })}
+                  </div>
+                )}
               </div>
-              <button 
-                onClick={autoSelectAdjacent}
-                className="btn-indigo w-full py-2.5 flex items-center justify-center gap-2"
-                style={{ padding: '10px' }}
-              >
-                <Users size={16} /> Auto-Select {groupSize} Seats
-              </button>
-            </div>
+            ) : (
+              /* Group Booking */
+              <div className="glass-card p-6 border-[#4A9B7F]/20">
+                <h3 className="font-display font-semibold mb-2 text-lg">Group Booking</h3>
+                <p className="text-xs text-[#8B93A7] mb-4">Automatically find and reserve consecutive seats together.</p>
+                <div className="flex gap-2 mb-4">
+                  {[2, 3, 4, 5].map((s) => {
+                    const isActive = groupSize === s;
+                    const glowColor = 'blue';
+                    return (
+                      <button
+                        key={s}
+                        onClick={() => setGroupSize(s)}
+                        className={`flex-1 py-1.5 rounded-md text-sm font-semibold transition-all border ${
+                          isActive
+                            ? 'text-white border-transparent shadow-lg scale-105 z-10' 
+                            : 'bg-[#12161F] text-[#8B93A7] border-[#232838] hover:border-[#8B93A7]'
+                        }`}
+                        style={isActive ? { background: `var(--gradient-blue)`, boxShadow: `0 0 12px var(--blue-glow)` } : {}}
+                      >
+                        {s}
+                      </button>
+                    );
+                  })}
+                </div>
+                <button 
+                  onClick={autoSelectAdjacent}
+                  className="btn-indigo w-full py-2.5 flex items-center justify-center gap-2"
+                  style={{ padding: '10px' }}
+                >
+                  <Users size={16} /> Auto-Select {groupSize} Seats
+                </button>
+              </div>
+            )}
 
             <div className="glass-card p-6">
               <h3 className="font-display font-semibold mb-4 text-lg">Legend</h3>
@@ -402,6 +523,7 @@ export default function SeatMapPage() {
 
       {showPayment && (
         <PaymentModal
+          booking={booking}
           amount={total}
           onSuccess={handlePaymentSuccess}
           onClose={() => setShowPayment(false)}
