@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../api/client';
 import { io } from 'socket.io-client';
-import PaymentModal from '../components/PaymentModal';
 import { QRCodeSVG } from 'qrcode.react';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -17,7 +16,6 @@ export default function SeatMapPage() {
   const [booking, setBooking] = useState(null);
   const [error, setError] = useState('');
   const [status, setStatus] = useState('');
-  const [showPayment, setShowPayment] = useState(false);
   const [viewerCount, setViewerCount] = useState(0);
   const [pricing, setPricing] = useState(null);
   const [idempotencyKey, setIdempotencyKey] = useState(crypto.randomUUID());
@@ -86,8 +84,7 @@ export default function SeatMapPage() {
       const res = await api.post(`/waitlist/${id}/claim`);
       setBooking({ bookingId: res.data.bookingId, expiresAt: res.data.expiresAt });
       setStatus('held');
-      setShowPayment(true);
-      toast.success('Seat claimed! Complete payment to confirm.');
+      toast.success('Seat claimed! Click Confirm & Pay to finalize.');
       loadEvent();
       loadWaitlist();
     } catch (err) {
@@ -154,12 +151,19 @@ export default function SeatMapPage() {
     }
   }
 
-  function handlePaymentSuccess(result) {
-    setStatus('confirmed');
-    setBooking((b) => ({ ...b, amount: result?.amount || b?.amount }));
-    setShowPayment(false);
-    toast.success('Payment verified & booking confirmed!');
-    loadEvent();
+  async function confirmAndPay() {
+    setError('');
+    try {
+      const res = await api.post(`/bookings/${booking.bookingId}/confirm`);
+      setStatus('confirmed');
+      setBooking((b) => ({ ...b, amount: res.data.amount }));
+      toast.success('Booking confirmed!');
+      loadEvent();
+    } catch (err) {
+      const msg = err.response?.data?.error || 'Failed to confirm';
+      setError(msg);
+      toast.error(msg);
+    }
   }
 
   async function cancelBooking() {
@@ -489,7 +493,7 @@ export default function SeatMapPage() {
                   <button onClick={cancelBooking} className="btn-ghost-red">
                     Cancel
                   </button>
-                  <button onClick={() => setShowPayment(true)} className="btn-emerald">
+                  <button onClick={confirmAndPay} className="btn-emerald">
                     Confirm & Pay
                   </button>
                 </div>
@@ -519,15 +523,6 @@ export default function SeatMapPage() {
         <div className="fixed top-24 left-1/2 -translate-x-1/2 z-50 bg-[#C1443D] text-white px-6 py-3 rounded-lg font-medium shadow-xl">
           {error}
         </div>
-      )}
-
-      {showPayment && (
-        <PaymentModal
-          booking={booking}
-          amount={total}
-          onSuccess={handlePaymentSuccess}
-          onClose={() => setShowPayment(false)}
-        />
       )}
     </div>
   );
